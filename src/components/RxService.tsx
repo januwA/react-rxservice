@@ -29,8 +29,6 @@ export const RxService: FC<{
     serviceListSub = GLOBAL_SERVICE_SUBJECT
       .pipe(
         map((subjects) => {
-          console.log(subjects, scopeServiceList);
-
           return combineLatest([...subjects, ...scopeServiceList]);
         }),
         tap(() => sub?.unsubscribe())

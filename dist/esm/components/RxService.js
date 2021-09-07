@@ -10,7 +10,6 @@ export const RxService = ({ children, pipe, services }) => {
         const scopeServiceList = (services !== null && services !== void 0 ? services : []).map(s => getService(s).service$);
         serviceListSub = GLOBAL_SERVICE_SUBJECT
             .pipe(map((subjects) => {
-            console.log(subjects, scopeServiceList);
             return combineLatest([...subjects, ...scopeServiceList]);
         }), tap(() => sub === null || sub === void 0 ? void 0 : sub.unsubscribe()))
             .subscribe((stream) => {
