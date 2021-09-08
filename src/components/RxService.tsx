@@ -54,10 +54,16 @@ export interface OnCreate {
   OnCreate(): any;
 }
 
+/**
+ * 触发频率很高
+ */
 export interface OnChanged {
   OnChanged(): any;
 }
 
+/**
+ * 触发频率较小
+ */
 export interface OnUpdate {
   OnUpdate(): any;
 }

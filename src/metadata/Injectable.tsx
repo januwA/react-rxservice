@@ -3,6 +3,7 @@ import { BehaviorSubject, debounceTime } from "rxjs";
 
 const SERVICE_ID = "__SERVICE_ID__";
 const DEFAULT_STATIC_INSTANCE = "ins";
+const IGNORES = "__IGNORES__";
 
 export type Constructor<T> = new (...args: any[]) => T;
 
@@ -11,6 +12,14 @@ export interface ServiceCache {
   instance: any;
   service$: BehaviorSubject<any>;
 }
+
+export type Ignore_t = {
+  init?: boolean;
+  get?: boolean;
+  set?: boolean;
+};
+
+export type ServiceIgnore_t = { [prop: string]: Ignore_t };
 
 function isLikeOnject(value: any): boolean {
   return typeof value === "object" && value !== null;
@@ -26,7 +35,11 @@ function getOwnPropertyDescriptor(
   return getOwnPropertyDescriptor(Object.getPrototypeOf(target), key);
 }
 
-function observable(obj: any, changed: () => void) {
+function observable(
+  obj: any,
+  changed: () => void,
+  ignores: ServiceIgnore_t = Object.create(null)
+) {
   observable.prototype.objcache ??= new WeakMap();
   const objcache: WeakMap<any, any> = observable.prototype.objcache;
 
@@ -37,6 +50,8 @@ function observable(obj: any, changed: () => void) {
   objcache.set(obj, undefined);
 
   for (const key in obj) {
+    if (key in ignores && ignores[key].init) continue;
+
     const value = obj[key];
     // 递归代理
     if (isLikeOnject(value)) obj[key] = observable(value, changed);
@@ -44,6 +59,8 @@ function observable(obj: any, changed: () => void) {
 
   const proxy: any = new Proxy(obj, {
     get(target: any, key: any) {
+      if (key in ignores && ignores[key].get) return target[key];
+
       const des = getOwnPropertyDescriptor(target, key);
       if (des?.value && typeof des.value === "function") {
         return des.value.bind(proxy);
@@ -53,6 +70,9 @@ function observable(obj: any, changed: () => void) {
       return target[key];
     },
     set(target: any, key: any, value: any) {
+      if (key in ignores && ignores[key].set)
+        return (target[key] = value), true;
+
       const des = getOwnPropertyDescriptor(target, key);
       value = observable(value, changed);
       if (des?.set) des.set.call(proxy, value);
@@ -70,21 +90,22 @@ function observable(obj: any, changed: () => void) {
 
 export function getService(service: Constructor<any>) {
   const manager = new ServiceManager();
-  return manager.get(service)
+  return manager.get(service);
 }
 
-export const GLOBAL_SERVICE_SUBJECT = new BehaviorSubject<BehaviorSubject<any>[]>([]);
-
+export const GLOBAL_SERVICE_SUBJECT = new BehaviorSubject<
+  BehaviorSubject<any>[]
+>([]);
 
 class ServiceManager {
   static ID = 0;
   static ins: ServiceManager;
 
   private services: {
-    [id: string]: ServiceCache
-  } = {}
+    [id: string]: ServiceCache;
+  } = {};
   constructor() {
-    return ServiceManager.ins ??= this;
+    return (ServiceManager.ins ??= this);
   }
 
   getID(service: Constructor<any>): string {
@@ -92,7 +113,7 @@ class ServiceManager {
   }
 
   setID(service: Constructor<any>, id: string) {
-    return service.prototype.constructor[SERVICE_ID] = id;
+    return (service.prototype.constructor[SERVICE_ID] = id);
   }
 
   exist(service: Constructor<any>) {
@@ -101,28 +122,27 @@ class ServiceManager {
   }
 
   get(service: Constructor<any>) {
-    return this.services[this.getID(service)]
+    return this.services[this.getID(service)];
   }
 
   initService(service: Constructor<any>): ServiceCache {
     const id = this.setID(service, `${++ServiceManager.ID}_${service.name}`);
-    return this.services[id] = {} as ServiceCache;
+    return (this.services[id] = {} as ServiceCache);
   }
 
   get serviceSubjects() {
-    return Object.values(this.services).map(e => e.service$);
+    return Object.values(this.services).map((e) => e.service$);
   }
 }
 
 const callHook = (t: any, hook: string) => {
   if (Reflect.has(t, hook)) {
-    Reflect.get(t, hook)()
+    Reflect.get(t, hook)();
   }
-}
-const callCreate = (t: any) => callHook(t, 'OnCreate')
-const callChanged = (t: any) => callHook(t, 'OnChanged')
-const callUpdate = (t: any) => callHook(t, 'OnUpdate')
-
+};
+const callCreate = (t: any) => callHook(t, "OnCreate");
+const callChanged = (t: any) => callHook(t, "OnChanged");
+const callUpdate = (t: any) => callHook(t, "OnUpdate");
 
 /**
  * 创建一个服务
@@ -130,35 +150,45 @@ const callUpdate = (t: any) => callHook(t, 'OnUpdate')
  * ! 不要在服务内使用箭头函数
  */
 export function Injectable(config?: {
-  global?: boolean
-  staticInstance?: string
+  global?: boolean;
+  staticInstance?: string;
 }) {
-  config = Object.assign({}, {
-    staticInstance: DEFAULT_STATIC_INSTANCE,
-    global: true
-  }, config)
+  config = Object.assign(
+    {},
+    {
+      staticInstance: DEFAULT_STATIC_INSTANCE,
+      global: true,
+    },
+    config
+  );
   const manager = new ServiceManager();
 
   return function (target: Constructor<any>) {
     if (manager.exist(target)) return;
 
-    const args: any[] = (Reflect.getMetadata("design:paramtypes", target) as any[] ?? [])
+    const args: any[] = (
+      (Reflect.getMetadata("design:paramtypes", target) as any[]) ?? []
+    )
       .filter((param) => manager.exist(param))
       .map((param) => manager.get(param).instance);
     const instance = Reflect.construct(target, args);
 
-
     const service = manager.initService(target);
-    const proxy = observable(instance, () => {
-      callChanged(proxy)
-      service$.next(undefined);
-    });
-
+    const ignores: ServiceIgnore_t =
+      target.prototype.constructor[IGNORES] ?? {};
+    const proxy = observable(
+      instance,
+      () => {
+        callChanged(proxy);
+        service$.next(undefined);
+      },
+      ignores
+    );
 
     const service$ = new BehaviorSubject(undefined);
 
-    service$.pipe(debounceTime(10)).subscribe(r => {
-      callUpdate(proxy)
+    service$.pipe(debounceTime(10)).subscribe((r) => {
+      callUpdate(proxy);
     });
 
     service.staticInstance = config?.staticInstance;
@@ -170,6 +200,20 @@ export function Injectable(config?: {
     }
 
     if (config?.global) GLOBAL_SERVICE_SUBJECT.next(manager.serviceSubjects);
-    callCreate(proxy)
+    callCreate(proxy);
+  };
+}
+
+/**
+ * 不会监听这个属性
+ */
+export function Ignore(config?: Ignore_t) {
+  return function (target: any, key: PropertyKey, des?: PropertyDescriptor) {
+    target.constructor[IGNORES] ??= {};
+    target.constructor[IGNORES][key] = Object.assign(
+      {},
+      { init: true, get: true, set: true },
+      config
+    );
   };
 }

@@ -2,6 +2,7 @@ import "reflect-metadata";
 import { BehaviorSubject, debounceTime } from "rxjs";
 const SERVICE_ID = "__SERVICE_ID__";
 const DEFAULT_STATIC_INSTANCE = "ins";
+const IGNORES = "__IGNORES__";
 function isLikeOnject(value) {
     return typeof value === "object" && value !== null;
 }
@@ -13,7 +14,7 @@ function getOwnPropertyDescriptor(target, key) {
         return des;
     return getOwnPropertyDescriptor(Object.getPrototypeOf(target), key);
 }
-function observable(obj, changed) {
+function observable(obj, changed, ignores = Object.create(null)) {
     var _a, _b;
     var _c;
     (_a = (_c = observable.prototype).objcache) !== null && _a !== void 0 ? _a : (_c.objcache = new WeakMap());
@@ -24,12 +25,16 @@ function observable(obj, changed) {
         return (_b = objcache.get(obj)) !== null && _b !== void 0 ? _b : obj;
     objcache.set(obj, undefined);
     for (const key in obj) {
+        if (key in ignores && ignores[key].init)
+            continue;
         const value = obj[key];
         if (isLikeOnject(value))
             obj[key] = observable(value, changed);
     }
     const proxy = new Proxy(obj, {
         get(target, key) {
+            if (key in ignores && ignores[key].get)
+                return target[key];
             const des = getOwnPropertyDescriptor(target, key);
             if ((des === null || des === void 0 ? void 0 : des.value) && typeof des.value === "function") {
                 return des.value.bind(proxy);
@@ -39,6 +44,8 @@ function observable(obj, changed) {
             return target[key];
         },
         set(target, key, value) {
+            if (key in ignores && ignores[key].set)
+                return (target[key] = value), true;
             const des = getOwnPropertyDescriptor(target, key);
             value = observable(value, changed);
             if (des === null || des === void 0 ? void 0 : des.set)
@@ -62,13 +69,13 @@ class ServiceManager {
     constructor() {
         var _a;
         this.services = {};
-        return (_a = ServiceManager.ins) !== null && _a !== void 0 ? _a : (ServiceManager.ins = this);
+        return ((_a = ServiceManager.ins) !== null && _a !== void 0 ? _a : (ServiceManager.ins = this));
     }
     getID(service) {
         return service.prototype.constructor[SERVICE_ID];
     }
     setID(service, id) {
-        return service.prototype.constructor[SERVICE_ID] = id;
+        return (service.prototype.constructor[SERVICE_ID] = id);
     }
     exist(service) {
         const id = this.getID(service);
@@ -79,10 +86,10 @@ class ServiceManager {
     }
     initService(service) {
         const id = this.setID(service, `${++ServiceManager.ID}_${service.name}`);
-        return this.services[id] = {};
+        return (this.services[id] = {});
     }
     get serviceSubjects() {
-        return Object.values(this.services).map(e => e.service$);
+        return Object.values(this.services).map((e) => e.service$);
     }
 }
 ServiceManager.ID = 0;
@@ -91,17 +98,17 @@ const callHook = (t, hook) => {
         Reflect.get(t, hook)();
     }
 };
-const callCreate = (t) => callHook(t, 'OnCreate');
-const callChanged = (t) => callHook(t, 'OnChanged');
-const callUpdate = (t) => callHook(t, 'OnUpdate');
+const callCreate = (t) => callHook(t, "OnCreate");
+const callChanged = (t) => callHook(t, "OnChanged");
+const callUpdate = (t) => callHook(t, "OnUpdate");
 export function Injectable(config) {
     config = Object.assign({}, {
         staticInstance: DEFAULT_STATIC_INSTANCE,
-        global: true
+        global: true,
     }, config);
     const manager = new ServiceManager();
     return function (target) {
-        var _a, _b;
+        var _a, _b, _c;
         if (manager.exist(target))
             return;
         const args = ((_a = Reflect.getMetadata("design:paramtypes", target)) !== null && _a !== void 0 ? _a : [])
@@ -109,22 +116,31 @@ export function Injectable(config) {
             .map((param) => manager.get(param).instance);
         const instance = Reflect.construct(target, args);
         const service = manager.initService(target);
+        const ignores = (_b = target.prototype.constructor[IGNORES]) !== null && _b !== void 0 ? _b : {};
         const proxy = observable(instance, () => {
             callChanged(proxy);
             service$.next(undefined);
-        });
+        }, ignores);
         const service$ = new BehaviorSubject(undefined);
-        service$.pipe(debounceTime(10)).subscribe(r => {
+        service$.pipe(debounceTime(10)).subscribe((r) => {
             callUpdate(proxy);
         });
         service.staticInstance = config === null || config === void 0 ? void 0 : config.staticInstance;
         service.instance = proxy;
         service.service$ = service$;
-        if ((_b = config === null || config === void 0 ? void 0 : config.staticInstance) === null || _b === void 0 ? void 0 : _b.trim()) {
+        if ((_c = config === null || config === void 0 ? void 0 : config.staticInstance) === null || _c === void 0 ? void 0 : _c.trim()) {
             target.prototype.constructor[config.staticInstance] = proxy;
         }
         if (config === null || config === void 0 ? void 0 : config.global)
             GLOBAL_SERVICE_SUBJECT.next(manager.serviceSubjects);
         callCreate(proxy);
+    };
+}
+export function Ignore(config) {
+    return function (target, key, des) {
+        var _a;
+        var _b;
+        (_a = (_b = target.constructor)[IGNORES]) !== null && _a !== void 0 ? _a : (_b[IGNORES] = {});
+        target.constructor[IGNORES][key] = Object.assign({}, { init: true, get: true, set: true }, config);
     };
 }

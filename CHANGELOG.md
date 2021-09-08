@@ -1,3 +1,7 @@
+## 0.2.0 [2021-9-8]
+
+- Add Ignore attribute decorator
+
 ## 0.1.1 [2021-9-7]
 
 - clear console info
