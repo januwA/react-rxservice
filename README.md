@@ -4,9 +4,15 @@ Use dependency injection to create services, inspired by Angular
 
 
 ## Install
-```
+```sh
 $ npm i ajanuw-react-rxservice
 $ npm i rxjs
+```
+
+If you want to use constructor dependency injection
+
+```sh
+$ npm i reflect-metadata
 ```
 
 Add two configurations to `tsconfig.json`
@@ -22,16 +28,11 @@ Add two configurations to `tsconfig.json`
 
 ## RxService
 
-Dependency injection service
-
-*When there is a dependency cycle, do not hesitate to write the two dependencies as one*
-
-*Do not use arrow functions in the service*
-
 ```ts
 import ReactDOM from "react-dom";
 import { BrowserRouter, Switch, Route, Link } from "react-router-dom";
 import { Injectable, RxService } from "react-rxservice";
+import "reflect-metadata";
 
 @Injectable()
 export class LogService {
@@ -48,7 +49,6 @@ export class CountService {
 
   count = 0;
   inc() {
-    // Use instance instead of this in arrow functions
     this.count++;
     this.log.log();
   }

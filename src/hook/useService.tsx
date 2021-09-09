@@ -1,4 +1,5 @@
-import { Constructor, getService } from "../metadata/Injectable";
+import { Constructor } from "../interface";
+import { getService } from "../metadata/Injectable";
 
 // https://stackoverflow.com/questions/68506919
 type MapPredicate<T> = T extends Constructor<any> ? InstanceType<T> : never;
@@ -6,7 +7,7 @@ type MapPredicate<T> = T extends Constructor<any> ? InstanceType<T> : never;
 type Mapped<
   Arr extends Array<unknown>,
   Result extends Array<unknown> = []
-  > = Arr extends []
+> = Arr extends []
   ? []
   : Arr extends [infer H]
   ? [...Result, MapPredicate<H>]
@@ -16,7 +17,7 @@ type Mapped<
 
 /**
  * 不强制在组件中使用
- * 
+ *
  * ```ts
  * const [c, lz] = useService(CountService, LazyService);
  * ```
@@ -24,5 +25,5 @@ type Mapped<
 export function useService<C extends Constructor<any>, Classes extends C[]>(
   ...klasses: [...Classes]
 ): Mapped<Classes> {
-  return klasses.map((s) => getService(s)?.instance) as Mapped<Classes>;
+  return klasses.map((s) => getService(s)?.proxy) as Mapped<Classes>;
 }

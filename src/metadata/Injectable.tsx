@@ -1,92 +1,8 @@
-import "reflect-metadata";
 import { BehaviorSubject, debounceTime } from "rxjs";
-
-const SERVICE_ID = "__SERVICE_ID__";
-const DEFAULT_STATIC_INSTANCE = "ins";
-const IGNORES = "__IGNORES__";
-
-export type Constructor<T> = new (...args: any[]) => T;
-
-export interface ServiceCache {
-  staticInstance?: string;
-  instance: any;
-  service$: BehaviorSubject<any>;
-}
-
-export type Ignore_t = {
-  init?: boolean;
-  get?: boolean;
-  set?: boolean;
-};
-
-export type ServiceIgnore_t = { [prop: string]: Ignore_t };
-
-function isLikeOnject(value: any): boolean {
-  return typeof value === "object" && value !== null;
-}
-
-function getOwnPropertyDescriptor(
-  target: any,
-  key: any
-): PropertyDescriptor | undefined {
-  if (!(key in target)) return;
-  const des = Object.getOwnPropertyDescriptor(target, key);
-  if (des) return des;
-  return getOwnPropertyDescriptor(Object.getPrototypeOf(target), key);
-}
-
-function observable(
-  obj: any,
-  changed: () => void,
-  ignores: ServiceIgnore_t = Object.create(null)
-) {
-  observable.prototype.objcache ??= new WeakMap();
-  const objcache: WeakMap<any, any> = observable.prototype.objcache;
-
-  if (!isLikeOnject(obj)) return obj;
-
-  if (objcache.has(obj)) return objcache.get(obj) ?? obj;
-
-  objcache.set(obj, undefined);
-
-  for (const key in obj) {
-    if (key in ignores && ignores[key].init) continue;
-
-    const value = obj[key];
-    // 递归代理
-    if (isLikeOnject(value)) obj[key] = observable(value, changed);
-  }
-
-  const proxy: any = new Proxy(obj, {
-    get(target: any, key: any) {
-      if (key in ignores && ignores[key].get) return target[key];
-
-      const des = getOwnPropertyDescriptor(target, key);
-      if (des?.value && typeof des.value === "function") {
-        return des.value.bind(proxy);
-      }
-
-      if (des?.get) return des.get.call(proxy);
-      return target[key];
-    },
-    set(target: any, key: any, value: any) {
-      if (key in ignores && ignores[key].set)
-        return (target[key] = value), true;
-
-      const des = getOwnPropertyDescriptor(target, key);
-      value = observable(value, changed);
-      if (des?.set) des.set.call(proxy, value);
-      else target[key] = value;
-      changed();
-      return true;
-    },
-  });
-
-  objcache.set(obj, proxy);
-  objcache.set(proxy, undefined);
-
-  return proxy;
-}
+import { Constructor, ServiceIgnore_t } from "../interface";
+import { DEFAULT_STATIC_INSTANCE, IGNORES } from "../const";
+import { ServiceManager } from "./ServiceManager";
+import { observable } from "./observable";
 
 export function getService(service: Constructor<any>) {
   const manager = new ServiceManager();
@@ -96,44 +12,6 @@ export function getService(service: Constructor<any>) {
 export const GLOBAL_SERVICE_SUBJECT = new BehaviorSubject<
   BehaviorSubject<any>[]
 >([]);
-
-class ServiceManager {
-  static ID = 0;
-  static ins: ServiceManager;
-
-  private services: {
-    [id: string]: ServiceCache;
-  } = {};
-  constructor() {
-    return (ServiceManager.ins ??= this);
-  }
-
-  getID(service: Constructor<any>): string {
-    return service.prototype.constructor[SERVICE_ID];
-  }
-
-  setID(service: Constructor<any>, id: string) {
-    return (service.prototype.constructor[SERVICE_ID] = id);
-  }
-
-  exist(service: Constructor<any>) {
-    const id: string | undefined = this.getID(service);
-    return id && id in this.services;
-  }
-
-  get(service: Constructor<any>) {
-    return this.services[this.getID(service)];
-  }
-
-  initService(service: Constructor<any>): ServiceCache {
-    const id = this.setID(service, `${++ServiceManager.ID}_${service.name}`);
-    return (this.services[id] = {} as ServiceCache);
-  }
-
-  get serviceSubjects() {
-    return Object.values(this.services).map((e) => e.service$);
-  }
-}
 
 const callHook = (t: any, hook: string) => {
   if (Reflect.has(t, hook)) {
@@ -151,7 +29,16 @@ const callUpdate = (t: any) => callHook(t, "OnUpdate");
  */
 export function Injectable(config?: {
   global?: boolean;
+
+  /**
+   * proxy后的实例，挂在到哪个静态属性上，默认 [ins]
+   */
   staticInstance?: string;
+
+  /**
+   * 必须是唯一的
+   */
+  id?: string;
 }) {
   config = Object.assign(
     {},
@@ -167,15 +54,23 @@ export function Injectable(config?: {
     if (manager.exist(target)) return;
 
     const args: any[] = (
-      (Reflect.getMetadata("design:paramtypes", target) as any[]) ?? []
+      "getMetadata" in Reflect
+        ? ((Reflect as any).getMetadata(
+            "design:paramtypes",
+            target
+          ) as any[]) ?? []
+        : []
     )
-      .filter((param) => manager.exist(param))
-      .map((param) => manager.get(param).instance);
+
+      .filter((service) => manager.exist(service))
+      .map((service) => manager.get(service).proxy);
     const instance = Reflect.construct(target, args);
 
-    const service = manager.initService(target);
+    const service = manager.initService(target, config?.id);
+
     const ignores: ServiceIgnore_t =
       target.prototype.constructor[IGNORES] ?? {};
+
     const proxy = observable(
       instance,
       () => {
@@ -184,6 +79,7 @@ export function Injectable(config?: {
       },
       ignores
     );
+    manager.setLate(target, proxy);
 
     const service$ = new BehaviorSubject(undefined);
 
@@ -192,7 +88,7 @@ export function Injectable(config?: {
     });
 
     service.staticInstance = config?.staticInstance;
-    service.instance = proxy;
+    service.proxy = proxy;
     service.service$ = service$;
 
     if (config?.staticInstance?.trim()) {
@@ -205,15 +101,22 @@ export function Injectable(config?: {
 }
 
 /**
- * 不会监听这个属性
+ * 服务已挂载，this指向proxy
  */
-export function Ignore(config?: Ignore_t) {
-  return function (target: any, key: PropertyKey, des?: PropertyDescriptor) {
-    target.constructor[IGNORES] ??= {};
-    target.constructor[IGNORES][key] = Object.assign(
-      {},
-      { init: true, get: true, set: true },
-      config
-    );
-  };
+export interface OnCreate {
+  OnCreate(): any;
+}
+
+/**
+ * 触发频率很高
+ */
+export interface OnChanged {
+  OnChanged(): any;
+}
+
+/**
+ * 触发频率较小
+ */
+export interface OnUpdate {
+  OnUpdate(): any;
 }
