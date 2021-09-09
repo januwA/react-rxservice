@@ -1,3 +1,4 @@
+import { BehaviorSubject } from "rxjs";
 import { Constructor, ServiceCache } from "../interface";
 export declare class ServiceManager {
     static ID: number;
@@ -8,14 +9,19 @@ export declare class ServiceManager {
             proxy: any;
         }[];
     };
-    private services;
+    GLOBAL_SERVICES: {
+        [id: string]: ServiceCache;
+    };
     constructor();
-    getID(service: Constructor<any>): string;
-    setID(service: Constructor<any>, id: string): string;
-    exist(service: Constructor<any>): boolean | "";
-    get(service: Constructor<any>): ServiceCache;
-    initService(service: Constructor<any>, sid?: string): ServiceCache;
-    get serviceSubjects(): import("rxjs").BehaviorSubject<any>[];
-    setLate(service: Constructor<any>, proxy: any): void;
+    getID(t: Constructor<any>): string;
+    exist(t: Constructor<any>): boolean | "";
+    getGlobalService(t: Constructor<any>): ServiceCache;
+    get serviceSubjects(): BehaviorSubject<any>[];
+    setLate(t: Constructor<any>, proxy: any): void;
+    register(t: Constructor<any>): ServiceCache;
+    destroy(t: Constructor<any>): void;
+    getMeta(t: Constructor<any>, key: string): any;
+    setMeta(t: Constructor<any>, key: string, value: any): any;
+    isGlobal(t: Constructor<any>): boolean | undefined;
 }
 //# sourceMappingURL=ServiceManager.d.ts.map

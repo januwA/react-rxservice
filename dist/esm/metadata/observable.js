@@ -1,3 +1,4 @@
+import { SERVICE_ID } from "../const";
 function isLikeOnject(value) {
     return typeof value === "object" && value !== null;
 }
@@ -9,21 +10,18 @@ function getOwnPropertyDescriptor(target, key) {
         return des;
     return getOwnPropertyDescriptor(Object.getPrototypeOf(target), key);
 }
+function isService(obj) {
+    var _a;
+    return SERVICE_ID in ((_a = Object.getPrototypeOf(obj)) === null || _a === void 0 ? void 0 : _a.constructor);
+}
 export function observable(obj, changed, ignores = Object.create(null)) {
-    var _a, _b;
-    var _c;
-    (_a = (_c = observable.prototype).objcache) !== null && _a !== void 0 ? _a : (_c.objcache = new WeakMap());
-    const objcache = observable.prototype.objcache;
-    if (!isLikeOnject(obj))
+    if (!isLikeOnject(obj) || isService(obj))
         return obj;
-    if (objcache.has(obj))
-        return (_b = objcache.get(obj)) !== null && _b !== void 0 ? _b : obj;
-    objcache.set(obj, undefined);
     for (const key in obj) {
         if (key in ignores && ignores[key].init)
             continue;
         const value = obj[key];
-        if (isLikeOnject(value))
+        if (isLikeOnject(value) && !isService(obj))
             obj[key] = observable(value, changed);
     }
     const proxy = new Proxy(obj, {
@@ -51,7 +49,5 @@ export function observable(obj, changed, ignores = Object.create(null)) {
             return true;
         },
     });
-    objcache.set(obj, proxy);
-    objcache.set(proxy, undefined);
     return proxy;
 }

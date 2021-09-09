@@ -1,12 +1,6 @@
-import { BehaviorSubject } from "rxjs";
-import { Constructor } from "../interface";
-export declare function getService(service: Constructor<any>): import("../interface").ServiceCache;
-export declare const GLOBAL_SERVICE_SUBJECT: BehaviorSubject<BehaviorSubject<any>[]>;
-export declare function Injectable(config?: {
-    global?: boolean;
-    staticInstance?: string;
-    id?: string;
-}): (target: Constructor<any>) => void;
+import { Constructor, ServiceCache, ServiceConfig_t } from "../interface";
+export declare function getService(t: Constructor<any>): ServiceCache;
+export declare function Injectable(config?: ServiceConfig_t): (target: Constructor<any>) => void;
 export interface OnCreate {
     OnCreate(): any;
 }
@@ -16,4 +10,8 @@ export interface OnChanged {
 export interface OnUpdate {
     OnUpdate(): any;
 }
+export interface OnDestroy {
+    OnDestroy(): any;
+}
+export declare function destroy(service: Constructor<any>): void;
 //# sourceMappingURL=Injectable.d.ts.map

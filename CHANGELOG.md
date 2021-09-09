@@ -1,3 +1,7 @@
+## 0.4.1 [2021-9-10]
+
+- Forgot to pack
+
 ## 0.4.0 [2021-9-10]
 
 - Fix memory leak
