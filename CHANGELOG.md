@@ -1,3 +1,7 @@
+## 0.4.0 [2021-9-10]
+
+- Fix memory leak
+
 ## 0.3.0 [2021-9-9]
 
 - Add Late attribute decorator

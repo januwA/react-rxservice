@@ -1,4 +1,5 @@
-export const SERVICE_ID = "__SERVICE_ID__";
-export const DEFAULT_STATIC_INSTANCE = "ins";
-export const IGNORES = "__IGNORES__";
-export const LATE = "__LATE__";
+export const SERVICE_ID = "__AJANUW_RXSERVICE_ID__";
+export const SERVICE_CACHE = "__AJANUW_RXSERVICE_CACHE__";
+export const SERVICE_IGNORES = "__AJANUW_RXSERVICE_IGNORES__";
+export const SERVICE_LATE = "__AJANUW_RXSERVICE_LATE__";
+export const SERVICE_CONFIG = "__AJANUW_RXSERVICE_CONFIG__";

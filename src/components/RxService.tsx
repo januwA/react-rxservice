@@ -12,12 +12,17 @@ import {
   tap,
   UnaryFunction,
 } from "rxjs";
+import { GLOBAL_SERVICE_SUBJECT } from "../GLOBAL_SERVICE_SUBJECT";
 import { Constructor } from "../interface";
-import { getService, GLOBAL_SERVICE_SUBJECT } from "../metadata/Injectable";
+import { getService, destroy } from "../metadata/Injectable";
 
 export const RxService: FC<{
   children: (...args: any) => ReactNode;
   pipe?: UnaryFunction<any, any>;
+
+  /**
+   * 不要把全局服务放在这里面，全局服务自动订阅
+   */
   services?: Constructor<any>[];
 }> = ({ children, pipe, services }) => {
   const [updateCount, inc] = useState(0);
@@ -31,9 +36,7 @@ export const RxService: FC<{
     );
 
     GLOBAL_SERVICE_SUBJECT.pipe(
-      map((subjects) => {
-        return combineLatest([...subjects, ...scopeServiceList]);
-      }),
+      map((subjects) => combineLatest([...subjects, ...scopeServiceList])),
       tap(() => sub?.unsubscribe()),
       takeUntil(distory$)
     ).subscribe((stream) => {
@@ -47,6 +50,11 @@ export const RxService: FC<{
     return () => {
       distory$.next(true);
       distory$.unsubscribe();
+      sub?.unsubscribe();
+
+      services?.forEach((s) => {
+        destroy(s);
+      });
     };
   }, []);
 

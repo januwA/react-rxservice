@@ -1,4 +1,4 @@
-import { IGNORES } from "../const";
+import { SERVICE_IGNORES } from "../const";
 import { Ignore_t } from "../interface";
 
 /**
@@ -6,8 +6,8 @@ import { Ignore_t } from "../interface";
  */
 export function Ignore(config?: Ignore_t) {
   return function (target: any, key: PropertyKey, des?: PropertyDescriptor) {
-    target.constructor[IGNORES] ??= {};
-    target.constructor[IGNORES][key] = Object.assign(
+    target.constructor[SERVICE_IGNORES] ??= {};
+    target.constructor[SERVICE_IGNORES][key] = Object.assign(
       {},
       { init: true, get: true, set: true },
       config

@@ -1,49 +1,26 @@
-import { BehaviorSubject, debounceTime } from "rxjs";
-import { Constructor, ServiceIgnore_t } from "../interface";
-import { DEFAULT_STATIC_INSTANCE, IGNORES } from "../const";
+import { Constructor, ServiceCache, ServiceConfig_t } from "../interface";
+import { SERVICE_CONFIG } from "../const";
 import { ServiceManager } from "./ServiceManager";
-import { observable } from "./observable";
 
-export function getService(service: Constructor<any>) {
+export function getService(t: Constructor<any>): ServiceCache {
   const manager = new ServiceManager();
-  return manager.get(service);
-}
-
-export const GLOBAL_SERVICE_SUBJECT = new BehaviorSubject<
-  BehaviorSubject<any>[]
->([]);
-
-const callHook = (t: any, hook: string) => {
-  if (Reflect.has(t, hook)) {
-    Reflect.get(t, hook)();
+  if (manager.isGlobal(t)) {
+    return manager.getGlobalService(t);
+  } else {
+    return manager.register(t);
   }
-};
-const callCreate = (t: any) => callHook(t, "OnCreate");
-const callChanged = (t: any) => callHook(t, "OnChanged");
-const callUpdate = (t: any) => callHook(t, "OnUpdate");
+}
 
 /**
  * 创建一个服务
  *
  * ! 不要在服务内使用箭头函数
  */
-export function Injectable(config?: {
-  global?: boolean;
-
-  /**
-   * proxy后的实例，挂在到哪个静态属性上，默认 [ins]
-   */
-  staticInstance?: string;
-
-  /**
-   * 必须是唯一的
-   */
-  id?: string;
-}) {
+export function Injectable(config?: ServiceConfig_t) {
   config = Object.assign(
     {},
     {
-      staticInstance: DEFAULT_STATIC_INSTANCE,
+      staticInstance: "ins",
       global: true,
     },
     config
@@ -51,52 +28,11 @@ export function Injectable(config?: {
   const manager = new ServiceManager();
 
   return function (target: Constructor<any>) {
-    if (manager.exist(target)) return;
+    target.prototype.constructor[SERVICE_CONFIG] = config;
 
-    const args: any[] = (
-      "getMetadata" in Reflect
-        ? ((Reflect as any).getMetadata(
-            "design:paramtypes",
-            target
-          ) as any[]) ?? []
-        : []
-    )
-
-      .filter((service) => manager.exist(service))
-      .map((service) => manager.get(service).proxy);
-    const instance = Reflect.construct(target, args);
-
-    const service = manager.initService(target, config?.id);
-
-    const ignores: ServiceIgnore_t =
-      target.prototype.constructor[IGNORES] ?? {};
-
-    const proxy = observable(
-      instance,
-      () => {
-        callChanged(proxy);
-        service$.next(undefined);
-      },
-      ignores
-    );
-    manager.setLate(target, proxy);
-
-    const service$ = new BehaviorSubject(undefined);
-
-    service$.pipe(debounceTime(10)).subscribe((r) => {
-      callUpdate(proxy);
-    });
-
-    service.staticInstance = config?.staticInstance;
-    service.proxy = proxy;
-    service.service$ = service$;
-
-    if (config?.staticInstance?.trim()) {
-      target.prototype.constructor[config.staticInstance] = proxy;
+    if (config?.global) {
+      manager.register(target);
     }
-
-    if (config?.global) GLOBAL_SERVICE_SUBJECT.next(manager.serviceSubjects);
-    callCreate(proxy);
   };
 }
 
@@ -119,4 +55,19 @@ export interface OnChanged {
  */
 export interface OnUpdate {
   OnUpdate(): any;
+}
+
+/**
+ * 这个service快要被销毁了，在这里清理资源
+ */
+export interface OnDestroy {
+  OnDestroy(): any;
+}
+
+/**
+ * 销毁一个服务，通常用来销毁非global的服务
+ */
+export function destroy(service: Constructor<any>) {
+  const manage = new ServiceManager();
+  manage.destroy(service);
 }

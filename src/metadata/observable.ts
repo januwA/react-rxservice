@@ -1,3 +1,4 @@
+import { SERVICE_ID } from "../const";
 import { ServiceIgnore_t } from "../interface";
 
 function isLikeOnject(value: any): boolean {
@@ -14,26 +15,26 @@ function getOwnPropertyDescriptor(
   return getOwnPropertyDescriptor(Object.getPrototypeOf(target), key);
 }
 
+function isService(obj: any) {
+  return SERVICE_ID in Object.getPrototypeOf(obj)?.constructor;
+}
+
 export function observable(
   obj: any,
   changed: () => void,
   ignores: ServiceIgnore_t = Object.create(null)
 ) {
-  observable.prototype.objcache ??= new WeakMap();
-  const objcache: WeakMap<any, any> = observable.prototype.objcache;
-
-  if (!isLikeOnject(obj)) return obj;
-
-  if (objcache.has(obj)) return objcache.get(obj) ?? obj;
-
-  objcache.set(obj, undefined);
+  // 跳过非object对象
+  // 跳过代理过的service
+  if (!isLikeOnject(obj) || isService(obj)) return obj;
 
   for (const key in obj) {
     if (key in ignores && ignores[key].init) continue;
 
     const value = obj[key];
     // 递归代理
-    if (isLikeOnject(value)) obj[key] = observable(value, changed);
+    if (isLikeOnject(value) && !isService(obj))
+      obj[key] = observable(value, changed);
   }
 
   const proxy: any = new Proxy(obj, {
@@ -60,9 +61,6 @@ export function observable(
       return true;
     },
   });
-
-  objcache.set(obj, proxy);
-  objcache.set(proxy, undefined);
 
   return proxy;
 }
