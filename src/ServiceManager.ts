@@ -21,7 +21,10 @@ export class ServiceManager {
   static ID = 0;
   static ins: ServiceManager;
   static isService(proxy: ServiceProxy) {
-    return SERVICE_ID in Object.getPrototypeOf(proxy)?.constructor;
+    return (
+      Object.prototype.toString.call(proxy) === "[object Object]" &&
+      SERVICE_ID in Object.getPrototypeOf(proxy).constructor
+    );
   }
 
   GLOBAL_SERVICE$ = new BehaviorSubject<RxServiceSubject[]>([]);

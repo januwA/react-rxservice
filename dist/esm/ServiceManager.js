@@ -10,8 +10,8 @@ export class ServiceManager {
         return ((_a = ServiceManager.ins) !== null && _a !== void 0 ? _a : (ServiceManager.ins = this));
     }
     static isService(proxy) {
-        var _a;
-        return SERVICE_ID in ((_a = Object.getPrototypeOf(proxy)) === null || _a === void 0 ? void 0 : _a.constructor);
+        return (Object.prototype.toString.call(proxy) === "[object Object]" &&
+            SERVICE_ID in Object.getPrototypeOf(proxy).constructor);
     }
     getID(t) {
         return this.getMeta(t, SERVICE_ID);

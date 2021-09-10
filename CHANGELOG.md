@@ -1,3 +1,4 @@
+## 0.5.1 [2021-9-10]
 ## 0.5.0 [2021-9-10]
 
 - Many problems have been fixed and some new functions have been added

@@ -1,7 +1,7 @@
 import { ServiceManager } from "./ServiceManager";
 import { ServiceIgnore_t } from "./interface";
 
-function isLikeOnject(value: any): boolean {
+function isLikeObject(value: any): boolean {
   return typeof value === "object" && value !== null;
 }
 
@@ -22,15 +22,12 @@ export function observable(
 ) {
   // 跳过非object对象
   // 跳过代理过的service
-  if (!isLikeOnject(obj) || ServiceManager.isService(obj)) return obj;
+  if (!isLikeObject(obj)) return obj;
+  if (ServiceManager.isService(obj)) return obj;
 
   for (const key in obj) {
     if (key in ignores && ignores[key].init) continue;
     const value = obj[key];
-
-    if (ServiceManager.isService(value) || !isLikeOnject(value)) continue;
-
-    // 递归代理
     obj[key] = observable(value, changed);
   }
 

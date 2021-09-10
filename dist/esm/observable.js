@@ -1,5 +1,5 @@
 import { ServiceManager } from "./ServiceManager";
-function isLikeOnject(value) {
+function isLikeObject(value) {
     return typeof value === "object" && value !== null;
 }
 function getOwnPropertyDescriptor(target, key) {
@@ -11,14 +11,14 @@ function getOwnPropertyDescriptor(target, key) {
     return getOwnPropertyDescriptor(Object.getPrototypeOf(target), key);
 }
 export function observable(obj, changed, ignores = Object.create(null)) {
-    if (!isLikeOnject(obj) || ServiceManager.isService(obj))
+    if (!isLikeObject(obj))
+        return obj;
+    if (ServiceManager.isService(obj))
         return obj;
     for (const key in obj) {
         if (key in ignores && ignores[key].init)
             continue;
         const value = obj[key];
-        if (ServiceManager.isService(value) || !isLikeOnject(value))
-            continue;
         obj[key] = observable(value, changed);
     }
     const proxy = new Proxy(obj, {
