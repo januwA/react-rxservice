@@ -2,7 +2,6 @@ import { BehaviorSubject, debounceTime } from "rxjs";
 import {
   SERVICE_IGNORES,
   SERVICE_LATE,
-  SERVICE_CACHE,
   SERVICE_CONFIG,
   SERVICE_ID,
 } from "./const";
@@ -36,7 +35,7 @@ export class ServiceManager {
     }[];
   } = {};
 
-  private GLOBAL_SERVICES_TABLE: {
+  private SERVICE_POND: {
     [id: string]: ServiceCache;
   } = {};
 
@@ -52,7 +51,9 @@ export class ServiceManager {
   }
 
   private get gSubject() {
-    return Object.values(this.GLOBAL_SERVICES_TABLE).map((e) => e.change$);
+    return Object.values(this.SERVICE_POND)
+      .filter((e) => !!e.change$)
+      .map((e) => e.change$) as RxServiceSubject<any>[];
   }
 
   /**
@@ -72,9 +73,9 @@ export class ServiceManager {
     // 加入待初始化缓存
     for (const prop in lates) {
       const id = lates[prop];
-      if (id in this.GLOBAL_SERVICES_TABLE) {
+      if (id in this.SERVICE_POND) {
         // 如果已经存在service直接初始化
-        proxy[prop] = this.GLOBAL_SERVICES_TABLE[id].proxy;
+        proxy[prop] = this.SERVICE_POND[id].proxy;
       } else {
         // 加入带初始化序列缓存
         this.SERVICE_LATE_TABLE[id] ??= [];
@@ -91,8 +92,10 @@ export class ServiceManager {
    */
   register(t: Target_t<any>): ServiceCache {
     // 如果有单例缓存直接返回
-    const cache = this.getMeta<ServiceCache>(t, SERVICE_CACHE);
-    if (cache) return cache;
+    const cacheID = this.getID(t);
+    const cache = this.SERVICE_POND[cacheID];
+    if (cache && !cache.isDestory) return cache;
+    const isRestore = cache && cache.isDestory;
 
     const config = this.getMeta<ServiceConfig_t>(t, SERVICE_CONFIG);
 
@@ -103,12 +106,23 @@ export class ServiceManager {
         : []
     ).map((arg) => this.getService(arg)?.proxy);
 
+    const id = isRestore
+      ? cacheID
+      : config.id ?? `${++ServiceManager.ID}_${t.name}`;
+
+    if (isRestore) {
+      cache.isDestory = false;
+      delete t.prototype.constructor[SERVICE_ID]; // 先清理掉 id key
+    } else {
+      this.SERVICE_POND[id] = { isDestory: false } as ServiceCache;
+    }
+
     // 构建实例
-    const instance = Reflect.construct(t, args);
+    this.SERVICE_POND[id].instance = Reflect.construct(t, args);
 
     // 自动无视属性，见 @Ignore
-    if (config.autoIgnore) {
-      const keys = Object.keys(instance);
+    if (!isRestore && config.autoIgnore) {
+      const keys = Object.keys(this.SERVICE_POND[id].instance);
 
       const isRegexp = config.autoIgnore instanceof RegExp;
       keys
@@ -121,64 +135,50 @@ export class ServiceManager {
     // 获取ignores元数据
     const ignores = this.getMeta<ServiceIgnore_t>(t, SERVICE_IGNORES) ?? {};
 
-    const proxy: ServiceProxy = observable(
-      instance,
+    this.SERVICE_POND[id].proxy = observable(
+      this.SERVICE_POND[id].instance,
       () => {
-        proxy.OnChange?.();
-        change$.next(undefined);
+        if (this.SERVICE_POND[id].isDestory) return;
+        this.SERVICE_POND[id].proxy?.OnChange?.();
+        this.SERVICE_POND[id].change$?.next(undefined);
       },
       ignores
     );
 
-    // 给每个服务一个id
-    const id = config.id ?? `${++ServiceManager.ID}_${t.name}`;
     this.setMeta(t, SERVICE_ID, id);
-
-    const change$ = new BehaviorSubject(undefined);
-
-    // 将缓存注入到元数据
-    const serviceCache = (this.GLOBAL_SERVICES_TABLE[id] =
-      this.setMeta<ServiceCache>(t, SERVICE_CACHE, {
-        proxy,
-        change$,
-      }));
-
-    change$.pipe(debounceTime(10)).subscribe(() => {
-      proxy.OnUpdate?.();
-    });
+    if (!isRestore) {
+      this.SERVICE_POND[id].change$ = new BehaviorSubject(undefined);
+      this.SERVICE_POND[id].change$.pipe(debounceTime(10)).subscribe(() => {
+        this.SERVICE_POND[id].proxy.OnUpdate?.();
+      });
+    }
 
     // 设置延迟服务
-    this.setLate(t, proxy);
+    this.setLate(t, this.SERVICE_POND[id].proxy as ServiceProxy);
 
     if (config?.staticInstance?.trim()) {
-      this.setMeta(t, config.staticInstance, proxy);
+      this.setMeta(t, config.staticInstance, this.SERVICE_POND[id].proxy);
+      this.setMeta(
+        t,
+        "_" + config.staticInstance,
+        this.SERVICE_POND[id].instance
+      );
     }
 
     // 通知所有 RxService 组件，有新的全局服务已经添加
     if (config.global) this.GLOBAL_SERVICE$.next(this.gSubject);
 
-    proxy.OnCreate?.();
-    return serviceCache;
+    this.SERVICE_POND[id].proxy.OnCreate?.();
+    return this.SERVICE_POND[id];
   }
 
   /**
    * 销毁一个全局服务
    */
   destroy(t: Target_t<any>) {
-    const config = this.getMeta<ServiceConfig_t>(t, SERVICE_CONFIG);
-    const serviceCache = this.getMeta<ServiceCache>(t, SERVICE_CACHE);
-    serviceCache.proxy.OnDestroy?.();
-
-    if (config.global) {
-      const id = this.getID(t);
-      delete this.GLOBAL_SERVICES_TABLE[id];
-    }
-
-    serviceCache.change$.unsubscribe();
-
-    // 清理id和cache
-    delete t.prototype.constructor[SERVICE_ID];
-    delete t.prototype.constructor[SERVICE_CACHE];
+    const cache = this.SERVICE_POND[this.getID(t)];
+    cache.proxy?.OnDestroy?.();
+    cache.isDestory = true;
   }
 
   getMeta<T = any>(t: Target_t<any>, key: string) {

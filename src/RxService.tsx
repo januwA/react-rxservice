@@ -15,7 +15,7 @@ import {
   UnaryFunction,
 } from "rxjs";
 import { ServiceManager } from ".";
-import { Target_t } from "./interface";
+import { RxServiceSubject, Target_t } from "./interface";
 
 export const RxService: FC<{
   children: (...args: any) => ReactNode;
@@ -35,7 +35,9 @@ export const RxService: FC<{
     const distory$ = new Subject<boolean>();
     let sub: Subscription | undefined;
 
-    const sSubject = services.map((t) => m.getService(t).change$);
+    const sSubject = services
+      .map((t) => m.getService(t).change$)
+      .filter((e) => !!e) as RxServiceSubject<any>[];
 
     const _sharedPipe = rxpipe(
       tap(() => sub?.unsubscribe()),

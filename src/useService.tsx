@@ -26,5 +26,5 @@ export function useService<T extends Target_t<any>, Targets extends T[]>(
   ...targets: [...Targets]
 ): Mapped<Targets> {
   const m = new ServiceManager();
-  return targets.map((s) => m.getService(s)?.proxy) as Mapped<Targets>;
+  return targets.map((t) => m.getService(t)?.proxy) as Mapped<Targets>;
 }

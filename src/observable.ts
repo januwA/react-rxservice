@@ -17,7 +17,7 @@ function getOwnPropertyDescriptor(
 
 export function observable(
   obj: any,
-  changed: () => void,
+  changed?: () => void,
   ignores: ServiceIgnore_t = Object.create(null)
 ) {
   // 跳过非object对象
@@ -51,7 +51,7 @@ export function observable(
       value = observable(value, changed);
       if (des?.set) des.set.call(proxy, value);
       else target[key] = value;
-      changed();
+      changed?.();
       return true;
     },
   });

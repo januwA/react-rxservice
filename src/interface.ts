@@ -44,7 +44,7 @@ export type ServiceConfig_t = {
    * 默认不注入
    *
    * 设置为true，会自动无视下划线结束的prop， 比如: name_
-   * 
+   *
    * 设置为 RegExp 则会为匹配到的属性进行注入
    */
   autoIgnore?: RegExp | boolean;
@@ -85,6 +85,11 @@ export interface OnDestroy {
 export interface ServiceProxy extends OnCreate, OnChange, OnUpdate, OnDestroy {
   [prop: PropertyKey]: any;
 }
+
+export interface AnyObject {
+  [key: PropertyKey]: any;
+}
+
 export interface ServiceCache {
   /**
    * 代理后的实例
@@ -92,9 +97,16 @@ export interface ServiceCache {
   proxy: Partial<ServiceProxy>;
 
   /**
+   * 未代理的单例
+   */
+  instance: AnyObject;
+
+  /**
    * proxy数据变更后，这个流将通知订阅者
    */
   change$: RxServiceSubject;
+
+  isDestory: boolean;
 }
 
 export interface RxServiceSubject<T = any> extends Subject<T> {}
