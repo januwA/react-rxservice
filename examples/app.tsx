@@ -2,43 +2,40 @@ import { memo } from "react";
 import { Link } from "react-router-dom";
 import { Injectable, OnCreate, RxService, useService } from "../src";
 
-@Injectable({ id: "APPService" })
+@Injectable({ id: "APPService", autoIgnore: true })
 class APPService implements OnCreate {
   OnCreate() {
     setInterval(() => {
-      this.count++;
+      this.__count_++;
     }, 1000);
   }
-  count = 0;
+
+  __count_ = 0;
 }
 
-@Injectable({ global: false })
-class PS {
-  i = 0;
-}
-
-export default () => {
-  const [as, ps] = useService(APPService, PS);
+export default memo(() => {
+  const [as] = useService(APPService);
   return (
-    <RxService services={[PS]}>
-      {() => (
-        <div>
-          <h3>Count: {as.count}</h3>
-          <p>
-            <Link to="/about">about</Link>
-          </p>
-          <p>{ps.i}</p>
-          <p>
-            <button
-              onClick={() => {
-                ps.i++;
-              }}
-            >
-              asd
-            </button>
-          </p>
-        </div>
-      )}
+    <RxService>
+      {() => {
+        return (
+          <div>
+            <p>
+              <Link to="/about">about</Link>
+            </p>
+            <p>{as.__count_}</p>
+            <p>
+              <button
+                onClick={() => {
+                  as.__count_++;
+                }}
+              >
+                asd
+              </button>
+            </p>
+          </div>
+        );
+      }}
     </RxService>
   );
-};
+});

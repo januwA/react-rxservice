@@ -7,8 +7,8 @@ import About from "./about";
 
 ReactDOM.render(
   <BrowserRouter>
-    <RxService>
-      {() => (
+    {/* <RxService> */}
+      {/* {() => ( */}
         <Switch>
           <Route exact path="/">
             <App />
@@ -18,8 +18,8 @@ ReactDOM.render(
             <About />
           </Route>
         </Switch>
-      )}
-    </RxService>
+       {/* )} */}
+    {/* </RxService> */}
   </BrowserRouter>,
   document.getElementById("root")
 );

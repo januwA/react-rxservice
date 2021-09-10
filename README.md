@@ -31,7 +31,7 @@ Add two configurations to `tsconfig.json`
 ```ts
 import ReactDOM from "react-dom";
 import { BrowserRouter, Switch, Route, Link } from "react-router-dom";
-import { Injectable, RxService } from "react-rxservice";
+import { Injectable, RxService } from "ajanuw-react-rxservice";
 import "reflect-metadata";
 
 @Injectable()

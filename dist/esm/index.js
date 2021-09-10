@@ -1,6 +1,4 @@
-export { RxService } from "./components/RxService";
-export { useService } from "./hook/useService";
-export { Injectable, destroy as distory, } from "./metadata/Injectable";
-export { Ignore } from "./metadata/Ignore";
-export { Late } from "./metadata/Late";
-export { ServiceManager } from "./metadata/ServiceManager";
+export { RxService } from "./RxService";
+export { useService } from "./useService";
+export { Injectable, Ignore, Late } from "./metadata";
+export { ServiceManager } from "./ServiceManager";

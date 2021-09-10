@@ -1,7 +1,6 @@
-export { RxService } from "./components/RxService";
-export { useService } from "./hook/useService";
-export { Injectable, destroy as distory, OnCreate, OnChanged, OnUpdate, } from "./metadata/Injectable";
-export { Ignore } from "./metadata/Ignore";
-export { Late } from "./metadata/Late";
-export { ServiceManager } from "./metadata/ServiceManager";
+export { RxService } from "./RxService";
+export { useService } from "./useService";
+export { Injectable, Ignore, Late } from "./metadata";
+export { ServiceManager } from "./ServiceManager";
+export { OnCreate, OnChange, OnUpdate, OnDestroy, ServiceProxy, } from "./interface";
 //# sourceMappingURL=index.d.ts.map

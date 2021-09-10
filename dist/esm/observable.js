@@ -1,4 +1,4 @@
-import { SERVICE_ID } from "../const";
+import { ServiceManager } from "./ServiceManager";
 function isLikeOnject(value) {
     return typeof value === "object" && value !== null;
 }
@@ -10,19 +10,16 @@ function getOwnPropertyDescriptor(target, key) {
         return des;
     return getOwnPropertyDescriptor(Object.getPrototypeOf(target), key);
 }
-function isService(obj) {
-    var _a;
-    return SERVICE_ID in ((_a = Object.getPrototypeOf(obj)) === null || _a === void 0 ? void 0 : _a.constructor);
-}
 export function observable(obj, changed, ignores = Object.create(null)) {
-    if (!isLikeOnject(obj) || isService(obj))
+    if (!isLikeOnject(obj) || ServiceManager.isService(obj))
         return obj;
     for (const key in obj) {
         if (key in ignores && ignores[key].init)
             continue;
         const value = obj[key];
-        if (isLikeOnject(value) && !isService(obj))
-            obj[key] = observable(value, changed);
+        if (ServiceManager.isService(value) || !isLikeOnject(value))
+            continue;
+        obj[key] = observable(value, changed);
     }
     const proxy = new Proxy(obj, {
         get(target, key) {

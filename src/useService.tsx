@@ -1,8 +1,8 @@
-import { Constructor } from "../interface";
-import { getService } from "../metadata/Injectable";
+import { ServiceManager } from "./ServiceManager";
+import { Target_t } from "./interface";
 
 // https://stackoverflow.com/questions/68506919
-type MapPredicate<T> = T extends Constructor<any> ? InstanceType<T> : never;
+type MapPredicate<T> = T extends Target_t<any> ? InstanceType<T> : never;
 
 type Mapped<
   Arr extends Array<unknown>,
@@ -22,8 +22,9 @@ type Mapped<
  * const [c, lz] = useService(CountService, LazyService);
  * ```
  */
-export function useService<C extends Constructor<any>, Classes extends C[]>(
-  ...klasses: [...Classes]
-): Mapped<Classes> {
-  return klasses.map((s) => getService(s)?.proxy) as Mapped<Classes>;
+export function useService<T extends Target_t<any>, Targets extends T[]>(
+  ...targets: [...Targets]
+): Mapped<Targets> {
+  const m = new ServiceManager();
+  return targets.map((s) => m.getService(s)?.proxy) as Mapped<Targets>;
 }
