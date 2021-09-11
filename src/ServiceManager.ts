@@ -88,33 +88,48 @@ export class ServiceManager {
   }
 
   /**
+   * 获取 constructor 依赖注入属性
+   */
+  private getArgs(t: Target_t<any>) {
+    if ("getMetadata" in Reflect) {
+      return (
+        ((Reflect as any).getMetadata("design:paramtypes", t) as any[]) ?? []
+      ).map((arg) => this.getService(arg)?.proxy);
+    }
+    return [];
+  }
+
+  /**
    * 注册服务
    */
   register(t: Target_t<any>): ServiceCache {
     // 如果有单例缓存直接返回
-    const cacheID = this.getID(t);
-    const cache = this.SERVICE_POND[cacheID];
+    const oldId = this.getID(t);
+    const cache = this.SERVICE_POND[oldId] as ServiceCache | undefined;
     if (cache && !cache.isDestory) return cache;
+
     const isRestore = cache && cache.isDestory;
 
+    // 如果保持了数据状态，直接返回
+    if (isRestore && cache && cache.isKeep) {
+      cache.isDestory = false;
+      return cache;
+    }
+
     const config = this.getMeta<ServiceConfig_t>(t, SERVICE_CONFIG);
-
-    // 获取 constructor 依赖注入属性
-    const args: any[] = (
-      "getMetadata" in Reflect
-        ? ((Reflect as any).getMetadata("design:paramtypes", t) as any[]) ?? []
-        : []
-    ).map((arg) => this.getService(arg)?.proxy);
-
+    const args = this.getArgs(t);
     const id = isRestore
-      ? cacheID
+      ? oldId
       : config.id ?? `${++ServiceManager.ID}_${t.name}`;
 
     if (isRestore) {
       cache.isDestory = false;
       delete t.prototype.constructor[SERVICE_ID]; // 先清理掉 id key
     } else {
-      this.SERVICE_POND[id] = { isDestory: false } as ServiceCache;
+      this.SERVICE_POND[id] = {
+        isDestory: false,
+        isKeep: false,
+      } as ServiceCache;
     }
 
     // 构建实例
@@ -123,7 +138,6 @@ export class ServiceManager {
     // 自动无视属性，见 @Ignore
     if (!isRestore && config.autoIgnore) {
       const keys = Object.keys(this.SERVICE_POND[id].instance);
-
       const isRegexp = config.autoIgnore instanceof RegExp;
       keys
         .filter((k) =>
@@ -134,7 +148,6 @@ export class ServiceManager {
 
     // 获取ignores元数据
     const ignores = this.getMeta<ServiceIgnore_t>(t, SERVICE_IGNORES) ?? {};
-
     this.SERVICE_POND[id].proxy = observable(
       this.SERVICE_POND[id].instance,
       () => {
@@ -154,7 +167,7 @@ export class ServiceManager {
     }
 
     // 设置延迟服务
-    this.setLate(t, this.SERVICE_POND[id].proxy as ServiceProxy);
+    this.setLate(t, this.SERVICE_POND[id].proxy);
 
     if (config?.staticInstance?.trim()) {
       this.setMeta(t, config.staticInstance, this.SERVICE_POND[id].proxy);
@@ -173,11 +186,12 @@ export class ServiceManager {
   }
 
   /**
-   * 销毁一个全局服务
+   * ! 不要销毁全局服务
    */
   destroy(t: Target_t<any>) {
     const cache = this.SERVICE_POND[this.getID(t)];
-    cache.proxy?.OnDestroy?.();
+    // 返回true，下次初始化时不会重置数据
+    cache.isKeep = cache.proxy?.OnDestroy?.() ?? false;
     cache.isDestory = true;
   }
 

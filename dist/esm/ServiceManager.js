@@ -47,26 +47,38 @@ export class ServiceManager {
             }
         }
     }
+    getArgs(t) {
+        var _a;
+        if ("getMetadata" in Reflect) {
+            return ((_a = Reflect.getMetadata("design:paramtypes", t)) !== null && _a !== void 0 ? _a : []).map((arg) => { var _a; return (_a = this.getService(arg)) === null || _a === void 0 ? void 0 : _a.proxy; });
+        }
+        return [];
+    }
     register(t) {
-        var _a, _b, _c, _d, _e, _f;
-        const cacheID = this.getID(t);
-        const cache = this.SERVICE_POND[cacheID];
+        var _a, _b, _c, _d, _e;
+        const oldId = this.getID(t);
+        const cache = this.SERVICE_POND[oldId];
         if (cache && !cache.isDestory)
             return cache;
         const isRestore = cache && cache.isDestory;
+        if (isRestore && cache && cache.isKeep) {
+            cache.isDestory = false;
+            return cache;
+        }
         const config = this.getMeta(t, SERVICE_CONFIG);
-        const args = ("getMetadata" in Reflect
-            ? (_a = Reflect.getMetadata("design:paramtypes", t)) !== null && _a !== void 0 ? _a : []
-            : []).map((arg) => { var _a; return (_a = this.getService(arg)) === null || _a === void 0 ? void 0 : _a.proxy; });
+        const args = this.getArgs(t);
         const id = isRestore
-            ? cacheID
-            : (_b = config.id) !== null && _b !== void 0 ? _b : `${++ServiceManager.ID}_${t.name}`;
+            ? oldId
+            : (_a = config.id) !== null && _a !== void 0 ? _a : `${++ServiceManager.ID}_${t.name}`;
         if (isRestore) {
             cache.isDestory = false;
             delete t.prototype.constructor[SERVICE_ID];
         }
         else {
-            this.SERVICE_POND[id] = { isDestory: false };
+            this.SERVICE_POND[id] = {
+                isDestory: false,
+                isKeep: false,
+            };
         }
         this.SERVICE_POND[id].instance = Reflect.construct(t, args);
         if (!isRestore && config.autoIgnore) {
@@ -76,7 +88,7 @@ export class ServiceManager {
                 .filter((k) => isRegexp ? config.autoIgnore.test(k) : k.endsWith("_"))
                 .forEach((k) => this.injectIgnore(t.prototype, k));
         }
-        const ignores = (_c = this.getMeta(t, SERVICE_IGNORES)) !== null && _c !== void 0 ? _c : {};
+        const ignores = (_b = this.getMeta(t, SERVICE_IGNORES)) !== null && _b !== void 0 ? _b : {};
         this.SERVICE_POND[id].proxy = observable(this.SERVICE_POND[id].instance, () => {
             var _a, _b, _c;
             if (this.SERVICE_POND[id].isDestory)
@@ -93,19 +105,19 @@ export class ServiceManager {
             });
         }
         this.setLate(t, this.SERVICE_POND[id].proxy);
-        if ((_d = config === null || config === void 0 ? void 0 : config.staticInstance) === null || _d === void 0 ? void 0 : _d.trim()) {
+        if ((_c = config === null || config === void 0 ? void 0 : config.staticInstance) === null || _c === void 0 ? void 0 : _c.trim()) {
             this.setMeta(t, config.staticInstance, this.SERVICE_POND[id].proxy);
             this.setMeta(t, "_" + config.staticInstance, this.SERVICE_POND[id].instance);
         }
         if (config.global)
             this.GLOBAL_SERVICE$.next(this.gSubject);
-        (_f = (_e = this.SERVICE_POND[id].proxy).OnCreate) === null || _f === void 0 ? void 0 : _f.call(_e);
+        (_e = (_d = this.SERVICE_POND[id].proxy).OnCreate) === null || _e === void 0 ? void 0 : _e.call(_d);
         return this.SERVICE_POND[id];
     }
     destroy(t) {
-        var _a, _b;
+        var _a, _b, _c;
         const cache = this.SERVICE_POND[this.getID(t)];
-        (_b = (_a = cache.proxy) === null || _a === void 0 ? void 0 : _a.OnDestroy) === null || _b === void 0 ? void 0 : _b.call(_a);
+        cache.isKeep = (_c = (_b = (_a = cache.proxy) === null || _a === void 0 ? void 0 : _a.OnDestroy) === null || _b === void 0 ? void 0 : _b.call(_a)) !== null && _c !== void 0 ? _c : false;
         cache.isDestory = true;
     }
     getMeta(t, key) {

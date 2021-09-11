@@ -82,7 +82,11 @@ export interface OnDestroy {
   OnDestroy(): any;
 }
 
-export interface ServiceProxy extends OnCreate, OnChange, OnUpdate, OnDestroy {
+export interface ServiceProxy
+  extends Partial<OnCreate>,
+    Partial<OnChange>,
+    Partial<OnUpdate>,
+    Partial<OnDestroy> {
   [prop: PropertyKey]: any;
 }
 
@@ -92,9 +96,9 @@ export interface AnyObject {
 
 export interface ServiceCache {
   /**
-   * 代理后的实例
+   * 代理后的单例
    */
-  proxy: Partial<ServiceProxy>;
+  proxy: ServiceProxy;
 
   /**
    * 未代理的单例
@@ -106,7 +110,17 @@ export interface ServiceCache {
    */
   change$: RxServiceSubject;
 
+  /**
+   * service是否处于销毁状态，默认 false
+   */
   isDestory: boolean;
+
+  /**
+   * 再次初始化是否使用上一次的数据，默认 false
+   *
+   * 在OnDestory钩子返回true，将开启keep，下次进入将使用上一次的数据，并且不会调用OnCreate钩子
+   */
+  isKeep: boolean;
 }
 
 export interface RxServiceSubject<T = any> extends Subject<T> {}

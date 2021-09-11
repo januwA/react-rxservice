@@ -26,17 +26,18 @@ export interface OnUpdate {
 export interface OnDestroy {
     OnDestroy(): any;
 }
-export interface ServiceProxy extends OnCreate, OnChange, OnUpdate, OnDestroy {
+export interface ServiceProxy extends Partial<OnCreate>, Partial<OnChange>, Partial<OnUpdate>, Partial<OnDestroy> {
     [prop: PropertyKey]: any;
 }
 export interface AnyObject {
     [key: PropertyKey]: any;
 }
 export interface ServiceCache {
-    proxy: Partial<ServiceProxy>;
+    proxy: ServiceProxy;
     instance: AnyObject;
     change$: RxServiceSubject;
     isDestory: boolean;
+    isKeep: boolean;
 }
 export interface RxServiceSubject<T = any> extends Subject<T> {
 }

@@ -14,10 +14,6 @@ class PS implements Partial<ServiceProxy> {
 
   OnCreate() {
     console.log("OnCreate");
-
-    setTimeout(() => {
-      this.i = 1;
-    }, 3000);
   }
 
   OnUpdate() {
@@ -26,6 +22,7 @@ class PS implements Partial<ServiceProxy> {
 
   OnDestroy() {
     console.log("Ondestroy");
+    return this.i < 10;
   }
 }
 

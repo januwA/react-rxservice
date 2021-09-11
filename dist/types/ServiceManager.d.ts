@@ -11,6 +11,7 @@ export declare class ServiceManager {
     getID(t: Target_t<any>): string;
     private get gSubject();
     setLate(t: Target_t<any>, proxy: ServiceProxy): void;
+    private getArgs;
     register(t: Target_t<any>): ServiceCache;
     destroy(t: Target_t<any>): void;
     getMeta<T = any>(t: Target_t<any>, key: string): T;
