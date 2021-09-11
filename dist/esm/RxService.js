@@ -8,7 +8,9 @@ export const RxService = ({ children, pipe, services = [], global = true }) => {
         const m = new ServiceManager();
         const distory$ = new Subject();
         let sub;
-        const sSubject = services.map((t) => m.getService(t).change$);
+        const sSubject = services
+            .map((t) => m.getService(t).change$)
+            .filter((e) => !!e);
         const _sharedPipe = rxpipe(tap(() => sub === null || sub === void 0 ? void 0 : sub.unsubscribe()), takeUntil(distory$));
         const obs = global
             ? m.GLOBAL_SERVICE$.pipe(map((gSubject) => combineLatest(gSubject.concat(sSubject))), _sharedPipe)

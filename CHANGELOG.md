@@ -1,3 +1,7 @@
+## 0.6.1 [2021-9-11]
+
+- build v0.6.0
+
 ## 0.6.0 [2021-9-10]
 
 - Fix some errors and memory leaks

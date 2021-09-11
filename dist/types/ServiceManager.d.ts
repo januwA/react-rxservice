@@ -6,7 +6,7 @@ export declare class ServiceManager {
     static isService(proxy: ServiceProxy): boolean;
     GLOBAL_SERVICE$: BehaviorSubject<RxServiceSubject<any>[]>;
     private SERVICE_LATE_TABLE;
-    private GLOBAL_SERVICES_TABLE;
+    private SERVICE_POND;
     constructor();
     getID(t: Target_t<any>): string;
     private get gSubject();

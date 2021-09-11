@@ -1,12 +1,12 @@
 import { BehaviorSubject, debounceTime } from "rxjs";
-import { SERVICE_IGNORES, SERVICE_LATE, SERVICE_CACHE, SERVICE_CONFIG, SERVICE_ID, } from "./const";
+import { SERVICE_IGNORES, SERVICE_LATE, SERVICE_CONFIG, SERVICE_ID, } from "./const";
 import { observable } from "./observable";
 export class ServiceManager {
     constructor() {
         var _a;
         this.GLOBAL_SERVICE$ = new BehaviorSubject([]);
         this.SERVICE_LATE_TABLE = {};
-        this.GLOBAL_SERVICES_TABLE = {};
+        this.SERVICE_POND = {};
         return ((_a = ServiceManager.ins) !== null && _a !== void 0 ? _a : (ServiceManager.ins = this));
     }
     static isService(proxy) {
@@ -17,7 +17,9 @@ export class ServiceManager {
         return this.getMeta(t, SERVICE_ID);
     }
     get gSubject() {
-        return Object.values(this.GLOBAL_SERVICES_TABLE).map((e) => e.change$);
+        return Object.values(this.SERVICE_POND)
+            .filter((e) => !!e.change$)
+            .map((e) => e.change$);
     }
     setLate(t, proxy) {
         var _a;
@@ -33,8 +35,8 @@ export class ServiceManager {
             return;
         for (const prop in lates) {
             const id = lates[prop];
-            if (id in this.GLOBAL_SERVICES_TABLE) {
-                proxy[prop] = this.GLOBAL_SERVICES_TABLE[id].proxy;
+            if (id in this.SERVICE_POND) {
+                proxy[prop] = this.SERVICE_POND[id].proxy;
             }
             else {
                 (_a = (_b = this.SERVICE_LATE_TABLE)[id]) !== null && _a !== void 0 ? _a : (_b[id] = []);
@@ -46,61 +48,65 @@ export class ServiceManager {
         }
     }
     register(t) {
-        var _a, _b, _c, _d, _e;
-        const cache = this.getMeta(t, SERVICE_CACHE);
-        if (cache)
+        var _a, _b, _c, _d, _e, _f;
+        const cacheID = this.getID(t);
+        const cache = this.SERVICE_POND[cacheID];
+        if (cache && !cache.isDestory)
             return cache;
+        const isRestore = cache && cache.isDestory;
         const config = this.getMeta(t, SERVICE_CONFIG);
         const args = ("getMetadata" in Reflect
             ? (_a = Reflect.getMetadata("design:paramtypes", t)) !== null && _a !== void 0 ? _a : []
             : []).map((arg) => { var _a; return (_a = this.getService(arg)) === null || _a === void 0 ? void 0 : _a.proxy; });
-        const instance = Reflect.construct(t, args);
-        if (config.autoIgnore) {
-            const keys = Object.keys(instance);
+        const id = isRestore
+            ? cacheID
+            : (_b = config.id) !== null && _b !== void 0 ? _b : `${++ServiceManager.ID}_${t.name}`;
+        if (isRestore) {
+            cache.isDestory = false;
+            delete t.prototype.constructor[SERVICE_ID];
+        }
+        else {
+            this.SERVICE_POND[id] = { isDestory: false };
+        }
+        this.SERVICE_POND[id].instance = Reflect.construct(t, args);
+        if (!isRestore && config.autoIgnore) {
+            const keys = Object.keys(this.SERVICE_POND[id].instance);
             const isRegexp = config.autoIgnore instanceof RegExp;
             keys
                 .filter((k) => isRegexp ? config.autoIgnore.test(k) : k.endsWith("_"))
                 .forEach((k) => this.injectIgnore(t.prototype, k));
         }
-        const ignores = (_b = this.getMeta(t, SERVICE_IGNORES)) !== null && _b !== void 0 ? _b : {};
-        const proxy = observable(instance, () => {
-            var _a;
-            (_a = proxy.OnChange) === null || _a === void 0 ? void 0 : _a.call(proxy);
-            change$.next(undefined);
+        const ignores = (_c = this.getMeta(t, SERVICE_IGNORES)) !== null && _c !== void 0 ? _c : {};
+        this.SERVICE_POND[id].proxy = observable(this.SERVICE_POND[id].instance, () => {
+            var _a, _b, _c;
+            if (this.SERVICE_POND[id].isDestory)
+                return;
+            (_b = (_a = this.SERVICE_POND[id].proxy) === null || _a === void 0 ? void 0 : _a.OnChange) === null || _b === void 0 ? void 0 : _b.call(_a);
+            (_c = this.SERVICE_POND[id].change$) === null || _c === void 0 ? void 0 : _c.next(undefined);
         }, ignores);
-        const id = (_c = config.id) !== null && _c !== void 0 ? _c : `${++ServiceManager.ID}_${t.name}`;
         this.setMeta(t, SERVICE_ID, id);
-        const change$ = new BehaviorSubject(undefined);
-        const serviceCache = (this.GLOBAL_SERVICES_TABLE[id] =
-            this.setMeta(t, SERVICE_CACHE, {
-                proxy,
-                change$,
-            }));
-        change$.pipe(debounceTime(10)).subscribe(() => {
-            var _a;
-            (_a = proxy.OnUpdate) === null || _a === void 0 ? void 0 : _a.call(proxy);
-        });
-        this.setLate(t, proxy);
+        if (!isRestore) {
+            this.SERVICE_POND[id].change$ = new BehaviorSubject(undefined);
+            this.SERVICE_POND[id].change$.pipe(debounceTime(10)).subscribe(() => {
+                var _a, _b;
+                (_b = (_a = this.SERVICE_POND[id].proxy).OnUpdate) === null || _b === void 0 ? void 0 : _b.call(_a);
+            });
+        }
+        this.setLate(t, this.SERVICE_POND[id].proxy);
         if ((_d = config === null || config === void 0 ? void 0 : config.staticInstance) === null || _d === void 0 ? void 0 : _d.trim()) {
-            this.setMeta(t, config.staticInstance, proxy);
+            this.setMeta(t, config.staticInstance, this.SERVICE_POND[id].proxy);
+            this.setMeta(t, "_" + config.staticInstance, this.SERVICE_POND[id].instance);
         }
         if (config.global)
             this.GLOBAL_SERVICE$.next(this.gSubject);
-        (_e = proxy.OnCreate) === null || _e === void 0 ? void 0 : _e.call(proxy);
-        return serviceCache;
+        (_f = (_e = this.SERVICE_POND[id].proxy).OnCreate) === null || _f === void 0 ? void 0 : _f.call(_e);
+        return this.SERVICE_POND[id];
     }
     destroy(t) {
         var _a, _b;
-        const config = this.getMeta(t, SERVICE_CONFIG);
-        const serviceCache = this.getMeta(t, SERVICE_CACHE);
-        (_b = (_a = serviceCache.proxy).OnDestroy) === null || _b === void 0 ? void 0 : _b.call(_a);
-        if (config.global) {
-            const id = this.getID(t);
-            delete this.GLOBAL_SERVICES_TABLE[id];
-        }
-        serviceCache.change$.unsubscribe();
-        delete t.prototype.constructor[SERVICE_ID];
-        delete t.prototype.constructor[SERVICE_CACHE];
+        const cache = this.SERVICE_POND[this.getID(t)];
+        (_b = (_a = cache.proxy) === null || _a === void 0 ? void 0 : _a.OnDestroy) === null || _b === void 0 ? void 0 : _b.call(_a);
+        cache.isDestory = true;
     }
     getMeta(t, key) {
         return t.prototype.constructor[key];

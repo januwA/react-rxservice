@@ -42,7 +42,7 @@ export function observable(obj, changed, ignores = Object.create(null)) {
                 des.set.call(proxy, value);
             else
                 target[key] = value;
-            changed();
+            changed === null || changed === void 0 ? void 0 : changed();
             return true;
         },
     });
