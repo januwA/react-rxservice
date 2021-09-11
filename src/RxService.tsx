@@ -2,24 +2,29 @@ import { useEffect, FC, useState, ReactNode } from "react";
 import {
   combineLatest,
   debounceTime,
+  distinct,
   map,
   mapTo,
   Observable,
   of,
-  pipe as rxpipe,
+  pipe,
   skip,
   Subject,
   Subscription,
   takeUntil,
   tap,
-  UnaryFunction,
 } from "rxjs";
 import { ServiceManager } from ".";
-import { RxServiceSubject, Target_t } from "./interface";
+import { Target_t } from "./interface";
 
+/**
+ * RxService 只是一个订阅服务的组件
+ *
+ * 如果global为true，自动订阅全局服务
+ */
 export const RxService: FC<{
-  children: (...args: any) => ReactNode;
-  pipe?: UnaryFunction<any, any>;
+  children?: (...args: any) => ReactNode;
+  builder?: (...args: any) => ReactNode;
 
   services?: Target_t<any>[];
 
@@ -27,44 +32,50 @@ export const RxService: FC<{
    * 默认会自动订阅全局服务，设置为false即可取消订阅全局服务
    */
   global?: boolean;
-}> = ({ children, pipe, services = [], global = true }) => {
+}> = ({ children, builder, services = [], global = true }) => {
   const [updateCount, inc] = useState(0);
 
   useEffect(() => {
     const m = new ServiceManager();
-    const distory$ = new Subject<boolean>();
+    const destroy$ = new Subject<boolean>();
     let sub: Subscription | undefined;
 
-    const sSubject = services
-      .map((t) => m.getService(t).change$)
-      .filter((e) => !!e) as RxServiceSubject<any>[];
+    const sSubject = [...new Set(services.map((t) => m.getService(t).change$))];
 
-    const _sharedPipe = rxpipe(
+    const _sharedPipe = pipe(
       tap(() => sub?.unsubscribe()),
-      takeUntil(distory$)
+      takeUntil(destroy$)
     );
     const obs = global
       ? m.GLOBAL_SERVICE$.pipe(
+          distinct(),
           map((gSubject) => combineLatest(gSubject.concat(sSubject))),
           _sharedPipe
         )
-      : of(combineLatest(sSubject)).pipe(_sharedPipe);
+      : of(sSubject).pipe(
+          map((sSubject) => combineLatest(sSubject)),
+          _sharedPipe
+        );
 
     obs.subscribe((stream: any) => {
       sub = (stream as Observable<any[]>)
-        .pipe(pipe ? pipe : rxpipe(skip(1), mapTo(undefined), debounceTime(10)))
+        .pipe(pipe(skip(1), mapTo(undefined), debounceTime(10)))
         .subscribe(() => inc((c) => c + 1));
     });
 
     return () => {
-      distory$.next(true);
-      distory$.unsubscribe();
+      destroy$.next(true);
+      destroy$.unsubscribe();
       sub?.unsubscribe();
 
       // 销毁非全局服务
-      services?.filter((t) => !m.isGlobal(t))?.forEach((t) => m.destroy(t));
+      [...new Set(services)]
+        .filter((t) => !m.isGlobal(t))
+        .forEach((t) => m.destroy(t));
     };
   }, []);
 
-  return <>{children(updateCount)}</>;
+  if (!builder && !children) throw "RxService need builder prop or children!";
+
+  return <>{(builder ?? children)!(updateCount)}</>;
 };

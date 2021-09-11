@@ -1,32 +1,33 @@
 import { Fragment as _Fragment, jsx as _jsx } from "react/jsx-runtime";
 import { useEffect, useState } from "react";
-import { combineLatest, debounceTime, map, mapTo, of, pipe as rxpipe, skip, Subject, takeUntil, tap, } from "rxjs";
+import { combineLatest, debounceTime, distinct, map, mapTo, of, pipe, skip, Subject, takeUntil, tap, } from "rxjs";
 import { ServiceManager } from ".";
-export const RxService = ({ children, pipe, services = [], global = true }) => {
+export const RxService = ({ children, builder, services = [], global = true }) => {
     const [updateCount, inc] = useState(0);
     useEffect(() => {
         const m = new ServiceManager();
-        const distory$ = new Subject();
+        const destroy$ = new Subject();
         let sub;
-        const sSubject = services
-            .map((t) => m.getService(t).change$)
-            .filter((e) => !!e);
-        const _sharedPipe = rxpipe(tap(() => sub === null || sub === void 0 ? void 0 : sub.unsubscribe()), takeUntil(distory$));
+        const sSubject = [...new Set(services.map((t) => m.getService(t).change$))];
+        const _sharedPipe = pipe(tap(() => sub === null || sub === void 0 ? void 0 : sub.unsubscribe()), takeUntil(destroy$));
         const obs = global
-            ? m.GLOBAL_SERVICE$.pipe(map((gSubject) => combineLatest(gSubject.concat(sSubject))), _sharedPipe)
-            : of(combineLatest(sSubject)).pipe(_sharedPipe);
+            ? m.GLOBAL_SERVICE$.pipe(distinct(), map((gSubject) => combineLatest(gSubject.concat(sSubject))), _sharedPipe)
+            : of(sSubject).pipe(map((sSubject) => combineLatest(sSubject)), _sharedPipe);
         obs.subscribe((stream) => {
             sub = stream
-                .pipe(pipe ? pipe : rxpipe(skip(1), mapTo(undefined), debounceTime(10)))
+                .pipe(pipe(skip(1), mapTo(undefined), debounceTime(10)))
                 .subscribe(() => inc((c) => c + 1));
         });
         return () => {
-            var _a;
-            distory$.next(true);
-            distory$.unsubscribe();
+            destroy$.next(true);
+            destroy$.unsubscribe();
             sub === null || sub === void 0 ? void 0 : sub.unsubscribe();
-            (_a = services === null || services === void 0 ? void 0 : services.filter((t) => !m.isGlobal(t))) === null || _a === void 0 ? void 0 : _a.forEach((t) => m.destroy(t));
+            [...new Set(services)]
+                .filter((t) => !m.isGlobal(t))
+                .forEach((t) => m.destroy(t));
         };
     }, []);
-    return _jsx(_Fragment, { children: children(updateCount) }, void 0);
+    if (!builder && !children)
+        throw "RxService need builder prop or children!";
+    return _jsx(_Fragment, { children: (builder !== null && builder !== void 0 ? builder : children)(updateCount) }, void 0);
 };

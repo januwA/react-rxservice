@@ -1,3 +1,8 @@
+## 0.8.0 [2021-9-12]
+
+- Optimize the code and increase the builder attribute 
+- delete pipe attribute
+
 ## 0.7.0 [2021-9-11]
 
 - add service keep

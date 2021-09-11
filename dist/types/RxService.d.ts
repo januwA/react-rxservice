@@ -1,9 +1,8 @@
 import { FC, ReactNode } from "react";
-import { UnaryFunction } from "rxjs";
 import { Target_t } from "./interface";
 export declare const RxService: FC<{
-    children: (...args: any) => ReactNode;
-    pipe?: UnaryFunction<any, any>;
+    children?: (...args: any) => ReactNode;
+    builder?: (...args: any) => ReactNode;
     services?: Target_t<any>[];
     global?: boolean;
 }>;

@@ -1,4 +1,4 @@
-import { memo, useEffect } from "react";
+import React, { memo, useEffect, useState } from "react";
 import {
   Injectable,
   Late,
@@ -6,23 +6,14 @@ import {
   RxService,
   useService,
   ServiceProxy,
+  Ignore,
 } from "../src";
 
 @Injectable({ global: false })
-class PS implements Partial<ServiceProxy> {
+class PS implements ServiceProxy {
   i = 0;
-
-  OnCreate() {
-    console.log("OnCreate");
-  }
-
-  OnUpdate() {
-    console.log("OnUpdate");
-  }
-
   OnDestroy() {
-    console.log("Ondestroy");
-    return this.i < 10;
+    return true;
   }
 }
 
@@ -30,14 +21,17 @@ export default memo(() => {
   const [ps] = useService(PS);
 
   return (
-    <RxService services={[PS]} global={false}>
-      {() => {
+    <RxService
+      services={[PS]}
+      global={false}
+      builder={(c: number) => {
         return (
           <div>
-            <h2 onClick={() => ps.i++}>{ps.i}</h2>
+            <p>{ps.i}</p>
+            <button onClick={() => ps.i++}>add page</button>
           </div>
         );
       }}
-    </RxService>
+    />
   );
 });

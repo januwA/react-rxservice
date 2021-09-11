@@ -25,7 +25,11 @@ export class ServiceManager {
       SERVICE_ID in Object.getPrototypeOf(proxy).constructor
     );
   }
+  constructor() {
+    return (ServiceManager.ins ??= this);
+  }
 
+  private gServiceList: RxServiceSubject[] = [];
   GLOBAL_SERVICE$ = new BehaviorSubject<RxServiceSubject[]>([]);
 
   private SERVICE_LATE_TABLE: {
@@ -39,21 +43,11 @@ export class ServiceManager {
     [id: string]: ServiceCache;
   } = {};
 
-  constructor() {
-    return (ServiceManager.ins ??= this);
-  }
-
   /**
    * 获取Service的id
    */
   getID(t: Target_t<any>) {
     return this.getMeta<string>(t, SERVICE_ID);
-  }
-
-  private get gSubject() {
-    return Object.values(this.SERVICE_POND)
-      .filter((e) => !!e.change$)
-      .map((e) => e.change$) as RxServiceSubject<any>[];
   }
 
   /**
@@ -152,7 +146,6 @@ export class ServiceManager {
       this.SERVICE_POND[id].instance,
       () => {
         if (this.SERVICE_POND[id].isDestory) return;
-        this.SERVICE_POND[id].proxy?.OnChange?.();
         this.SERVICE_POND[id].change$?.next(undefined);
       },
       ignores
@@ -179,7 +172,12 @@ export class ServiceManager {
     }
 
     // 通知所有 RxService 组件，有新的全局服务已经添加
-    if (config.global) this.GLOBAL_SERVICE$.next(this.gSubject);
+    if (config.global) {
+      this.gServiceList = [
+        ...new Set([...this.gServiceList, this.SERVICE_POND[id].change$]),
+      ];
+      this.GLOBAL_SERVICE$.next(this.gServiceList);
+    }
 
     this.SERVICE_POND[id].proxy.OnCreate?.();
     return this.SERVICE_POND[id];

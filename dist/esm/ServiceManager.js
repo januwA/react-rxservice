@@ -4,6 +4,7 @@ import { observable } from "./observable";
 export class ServiceManager {
     constructor() {
         var _a;
+        this.gServiceList = [];
         this.GLOBAL_SERVICE$ = new BehaviorSubject([]);
         this.SERVICE_LATE_TABLE = {};
         this.SERVICE_POND = {};
@@ -15,11 +16,6 @@ export class ServiceManager {
     }
     getID(t) {
         return this.getMeta(t, SERVICE_ID);
-    }
-    get gSubject() {
-        return Object.values(this.SERVICE_POND)
-            .filter((e) => !!e.change$)
-            .map((e) => e.change$);
     }
     setLate(t, proxy) {
         var _a;
@@ -90,11 +86,10 @@ export class ServiceManager {
         }
         const ignores = (_b = this.getMeta(t, SERVICE_IGNORES)) !== null && _b !== void 0 ? _b : {};
         this.SERVICE_POND[id].proxy = observable(this.SERVICE_POND[id].instance, () => {
-            var _a, _b, _c;
+            var _a;
             if (this.SERVICE_POND[id].isDestory)
                 return;
-            (_b = (_a = this.SERVICE_POND[id].proxy) === null || _a === void 0 ? void 0 : _a.OnChange) === null || _b === void 0 ? void 0 : _b.call(_a);
-            (_c = this.SERVICE_POND[id].change$) === null || _c === void 0 ? void 0 : _c.next(undefined);
+            (_a = this.SERVICE_POND[id].change$) === null || _a === void 0 ? void 0 : _a.next(undefined);
         }, ignores);
         this.setMeta(t, SERVICE_ID, id);
         if (!isRestore) {
@@ -109,8 +104,12 @@ export class ServiceManager {
             this.setMeta(t, config.staticInstance, this.SERVICE_POND[id].proxy);
             this.setMeta(t, "_" + config.staticInstance, this.SERVICE_POND[id].instance);
         }
-        if (config.global)
-            this.GLOBAL_SERVICE$.next(this.gSubject);
+        if (config.global) {
+            this.gServiceList = [
+                ...new Set([...this.gServiceList, this.SERVICE_POND[id].change$]),
+            ];
+            this.GLOBAL_SERVICE$.next(this.gServiceList);
+        }
         (_e = (_d = this.SERVICE_POND[id].proxy).OnCreate) === null || _e === void 0 ? void 0 : _e.call(_d);
         return this.SERVICE_POND[id];
     }
