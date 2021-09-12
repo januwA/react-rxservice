@@ -7,6 +7,7 @@ export class ServiceManager {
         this.gServiceList = [];
         this.GLOBAL_SERVICE$ = new BehaviorSubject([]);
         this.SERVICE_LATE_TABLE = {};
+        this.TARGET_ID_MAP = new Map();
         this.SERVICE_POND = {};
         return ((_a = ServiceManager.ins) !== null && _a !== void 0 ? _a : (ServiceManager.ins = this));
     }
@@ -15,14 +16,10 @@ export class ServiceManager {
             return false;
         return Object.getPrototypeOf(proxy).constructor[SERVICE_CONFIG];
     }
-    getID(t) {
-        var _a;
-        return (_a = this.getMeta(t, SERVICE_CONFIG)) === null || _a === void 0 ? void 0 : _a.id;
-    }
     setLate(t, proxy) {
         var _a;
         var _b;
-        const id = this.getID(t);
+        const id = this.TARGET_ID_MAP.get(t);
         if (id in this.SERVICE_LATE_TABLE) {
             const lateList = this.SERVICE_LATE_TABLE[id];
             lateList.forEach((late) => (late.proxy[late.prop] = proxy));
@@ -64,25 +61,33 @@ export class ServiceManager {
     }
     register(t) {
         var _a, _b, _c, _d, _e, _f;
-        const oldID = this.getID(t);
+        const exist = this.TARGET_ID_MAP.has(t);
+        let oldID = undefined;
+        if (exist)
+            oldID = this.TARGET_ID_MAP.get(t);
         const cache = this.SERVICE_POND[oldID];
         if (cache && !cache.isDestory)
             return cache;
         const isRestore = cache && cache.isDestory;
-        if (isRestore && cache && cache.isKeep) {
+        if (isRestore)
             cache.isDestory = false;
+        if (isRestore && cache && cache.isKeep) {
             (_b = (_a = this.SERVICE_POND[oldID].proxy).OnLink) === null || _b === void 0 ? void 0 : _b.call(_a);
             return cache;
         }
         const config = this.getMeta(t, SERVICE_CONFIG);
-        if (isRestore) {
-            cache.isDestory = false;
-        }
-        else {
+        if (!isRestore) {
+            const change$ = new BehaviorSubject(undefined);
             this.SERVICE_POND[config.id] = {
                 isDestory: false,
                 isKeep: false,
+                change$,
             };
+            this.TARGET_ID_MAP.set(t, config.id);
+            change$.pipe(debounceTime(10)).subscribe(() => {
+                var _a, _b;
+                (_b = (_a = service.proxy).OnUpdate) === null || _b === void 0 ? void 0 : _b.call(_a);
+            });
         }
         const service = this.SERVICE_POND[config.id];
         service.instance = Reflect.construct(t, this.getArgs(t));
@@ -97,13 +102,6 @@ export class ServiceManager {
             (_a = service.change$) === null || _a === void 0 ? void 0 : _a.next(undefined);
         }, ignores);
         this.setMeta(t, SERVICE_CONFIG, config);
-        if (!isRestore) {
-            service.change$ = new BehaviorSubject(undefined);
-            service.change$.pipe(debounceTime(10)).subscribe(() => {
-                var _a, _b;
-                (_b = (_a = service.proxy).OnUpdate) === null || _b === void 0 ? void 0 : _b.call(_a);
-            });
-        }
         this.setLate(t, service.proxy);
         if ((_d = config === null || config === void 0 ? void 0 : config.staticInstance) === null || _d === void 0 ? void 0 : _d.trim()) {
             this.setMeta(t, config.staticInstance, service.proxy);
@@ -118,9 +116,10 @@ export class ServiceManager {
     }
     destroy(t) {
         var _a, _b, _c;
-        const id = this.getID(t);
-        if (!id)
+        const exist = this.TARGET_ID_MAP.has(t);
+        if (!exist)
             throw "destroy error: not find id!";
+        const id = this.TARGET_ID_MAP.get(t);
         const cache = this.SERVICE_POND[id];
         cache.isKeep = (_c = (_b = (_a = cache.proxy) === null || _a === void 0 ? void 0 : _a.OnDestroy) === null || _b === void 0 ? void 0 : _b.call(_a)) !== null && _c !== void 0 ? _c : false;
         cache.isDestory = true;

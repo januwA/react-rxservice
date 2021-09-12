@@ -11,7 +11,7 @@ import {
 
 @Injectable({ global: false, autoIgnore: true })
 class PS implements ServiceProxy {
-  i_ = 0;
+  i = 0;
 
   OnDestroy() {
     // return true;
@@ -28,8 +28,8 @@ export default memo(() => {
       builder={(c: number) => {
         return (
           <div>
-            <p>{ps.i_}</p>
-            <button onClick={() => ps.i_++}>add page</button>
+            <p>{ps.i}</p>
+            <button onClick={() => ps.i++}>add page</button>
           </div>
         );
       }}

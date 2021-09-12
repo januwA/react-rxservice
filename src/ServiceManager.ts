@@ -19,6 +19,7 @@ export class ServiceManager {
     if (!proxy) return false;
     return Object.getPrototypeOf(proxy).constructor[SERVICE_CONFIG];
   }
+
   constructor() {
     return (ServiceManager.ins ??= this);
   }
@@ -33,22 +34,19 @@ export class ServiceManager {
     }[];
   } = {};
 
+  /**
+   * 使用Target映射service id
+   */
+  private TARGET_ID_MAP = new Map<Target_t<any>, string>();
   private SERVICE_POND: {
     [id: string]: ServiceCache;
   } = {};
 
   /**
-   * 获取Service的id
-   */
-  getID(t: Target_t<any>) {
-    return this.getMeta<ServiceConfig_t>(t, SERVICE_CONFIG)?.id;
-  }
-
-  /**
    * 处理装饰器 @Late
    */
   setLate(t: Target_t<any>, proxy: ServiceProxy) {
-    const id = this.getID(t)!;
+    const id = this.TARGET_ID_MAP.get(t)!;
     if (id in this.SERVICE_LATE_TABLE) {
       const lateList = this.SERVICE_LATE_TABLE[id];
       lateList.forEach((late) => (late.proxy[late.prop] = proxy));
@@ -104,29 +102,37 @@ export class ServiceManager {
    * 注册服务
    */
   register(t: Target_t<any>): ServiceCache {
-    const oldID = this.getID(t);
+    const exist = this.TARGET_ID_MAP.has(t);
+    let oldID = undefined;
+    if (exist) oldID = this.TARGET_ID_MAP.get(t);
     const cache = this.SERVICE_POND[oldID!] as ServiceCache | undefined;
     if (cache && !cache.isDestory) return cache; // 存在并且激活状态直接返回
 
     const isRestore = cache && cache.isDestory;
+    if (isRestore) cache.isDestory = false;
 
-    // 重链服务
+    // 重启服务
     if (isRestore && cache && cache.isKeep) {
-      cache.isDestory = false;
-      this.SERVICE_POND[oldID!].proxy.OnLink?.(); // 触发重链钩子
+      this.SERVICE_POND[oldID!].proxy.OnLink?.();
       return cache;
     }
 
     const config = this.getMeta<Required<ServiceConfig_t>>(t, SERVICE_CONFIG);
 
-    if (isRestore) {
-      cache.isDestory = false;
-    } else {
+    // 第一次初始化
+    if (!isRestore) {
+      const change$ = new BehaviorSubject<any>(undefined);
       this.SERVICE_POND[config.id] = {
         isDestory: false,
         isKeep: false,
+        change$,
       } as ServiceCache;
+      this.TARGET_ID_MAP.set(t, config.id);
+      change$.pipe(debounceTime(10)).subscribe(() => {
+        service.proxy.OnUpdate?.();
+      });
     }
+
     const service = this.SERVICE_POND[config.id];
     service.instance = Reflect.construct(t, this.getArgs(t));
     if (!isRestore) this.setAutoIgnore(t, service.instance); // 自动无视属性
@@ -142,13 +148,6 @@ export class ServiceManager {
       ignores
     );
     this.setMeta(t, SERVICE_CONFIG, config);
-
-    if (!isRestore) {
-      service.change$ = new BehaviorSubject(undefined);
-      service.change$.pipe(debounceTime(10)).subscribe(() => {
-        service.proxy.OnUpdate?.();
-      });
-    }
 
     // 设置延迟服务
     this.setLate(t, service.proxy);
@@ -172,9 +171,10 @@ export class ServiceManager {
    * ! 不要销毁全局服务
    */
   destroy(t: Target_t<any>) {
-    const id = this.getID(t);
-    if (!id) throw "destroy error: not find id!";
-    const cache = this.SERVICE_POND[id];
+    const exist = this.TARGET_ID_MAP.has(t);
+    if (!exist) throw "destroy error: not find id!";
+    const id = this.TARGET_ID_MAP.get(t);
+    const cache = this.SERVICE_POND[id!];
     cache.isKeep = cache.proxy?.OnDestroy?.() ?? false;
     cache.isDestory = true;
   }

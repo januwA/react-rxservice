@@ -1,4 +1,4 @@
-import { Subject } from "rxjs";
+import { BehaviorSubject, Subject } from "rxjs";
 
 export type Target_t<T> = new (...args: any[]) => T;
 
@@ -120,4 +120,4 @@ export interface ServiceCache {
   isKeep: boolean;
 }
 
-export interface RxServiceSubject<T = any> extends Subject<T> {}
+export interface RxServiceSubject<T = any> extends BehaviorSubject<T> {}

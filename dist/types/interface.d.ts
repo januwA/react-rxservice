@@ -1,4 +1,4 @@
-import { Subject } from "rxjs";
+import { BehaviorSubject } from "rxjs";
 export declare type Target_t<T> = new (...args: any[]) => T;
 export declare type IgnoreConfig_t = {
     init?: boolean;
@@ -38,6 +38,6 @@ export interface ServiceCache {
     isDestory: boolean;
     isKeep: boolean;
 }
-export interface RxServiceSubject<T = any> extends Subject<T> {
+export interface RxServiceSubject<T = any> extends BehaviorSubject<T> {
 }
 //# sourceMappingURL=interface.d.ts.map

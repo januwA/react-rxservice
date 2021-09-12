@@ -8,8 +8,8 @@ export declare class ServiceManager {
     private gServiceList;
     GLOBAL_SERVICE$: BehaviorSubject<RxServiceSubject<any>[]>;
     private SERVICE_LATE_TABLE;
+    private TARGET_ID_MAP;
     private SERVICE_POND;
-    getID(t: Target_t<any>): string | undefined;
     setLate(t: Target_t<any>, proxy: ServiceProxy): void;
     private getArgs;
     private setAutoIgnore;
