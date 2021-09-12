@@ -1,3 +1,7 @@
+## 1.0.1 [2021-9-13]
+
+- Optimize some problems
+
 ## 1.0.0 [2021-9-12]
 
 - add OnLink service hook

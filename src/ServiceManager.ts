@@ -1,10 +1,5 @@
 import { BehaviorSubject, debounceTime } from "rxjs";
-import {
-  SERVICE_IGNORES,
-  SERVICE_LATE,
-  SERVICE_CONFIG,
-  SERVICE_ID,
-} from "./const";
+import { SERVICE_IGNORES, SERVICE_LATE, SERVICE_CONFIG } from "./const";
 import {
   Target_t,
   ServiceCache,
@@ -13,6 +8,7 @@ import {
   ServiceProxy,
   RxServiceSubject,
   IgnoreConfig_t,
+  AnyObject,
 } from "./interface";
 import { observable } from "./observable";
 
@@ -20,10 +16,8 @@ export class ServiceManager {
   static ID = 0;
   static ins: ServiceManager;
   static isService(proxy: ServiceProxy) {
-    return (
-      Object.prototype.toString.call(proxy) === "[object Object]" &&
-      SERVICE_ID in Object.getPrototypeOf(proxy).constructor
-    );
+    if (!proxy) return false;
+    return Object.getPrototypeOf(proxy).constructor[SERVICE_CONFIG];
   }
   constructor() {
     return (ServiceManager.ins ??= this);
@@ -47,14 +41,14 @@ export class ServiceManager {
    * 获取Service的id
    */
   getID(t: Target_t<any>) {
-    return this.getMeta<string>(t, SERVICE_ID);
+    return this.getMeta<ServiceConfig_t>(t, SERVICE_CONFIG)?.id;
   }
 
   /**
    * 处理装饰器 @Late
    */
   setLate(t: Target_t<any>, proxy: ServiceProxy) {
-    const id = this.getID(t);
+    const id = this.getID(t)!;
     if (id in this.SERVICE_LATE_TABLE) {
       const lateList = this.SERVICE_LATE_TABLE[id];
       lateList.forEach((late) => (late.proxy[late.prop] = proxy));
@@ -93,46 +87,10 @@ export class ServiceManager {
     return [];
   }
 
-  /**
-   * 注册服务
-   */
-  register(t: Target_t<any>): ServiceCache {
-    // 如果有单例缓存直接返回
-    const oldId = this.getID(t);
-    const cache = this.SERVICE_POND[oldId] as ServiceCache | undefined;
-    if (cache && !cache.isDestory) return cache;
-
-    const isRestore = cache && cache.isDestory;
-
-    // 如果保持了数据状态，直接返回
-    if (isRestore && cache && cache.isKeep) {
-      cache.isDestory = false;
-      this.SERVICE_POND[oldId].proxy.OnLink?.(); // 触发重连钩子
-      return cache;
-    }
-
+  private setAutoIgnore(t: Target_t<any>, instance: AnyObject) {
     const config = this.getMeta<ServiceConfig_t>(t, SERVICE_CONFIG);
-    const args = this.getArgs(t);
-    const id = isRestore
-      ? oldId
-      : config.id ?? `${++ServiceManager.ID}_${t.name}`;
-
-    if (isRestore) {
-      cache.isDestory = false;
-      delete t.prototype.constructor[SERVICE_ID]; // 先清理掉 id key
-    } else {
-      this.SERVICE_POND[id] = {
-        isDestory: false,
-        isKeep: false,
-      } as ServiceCache;
-    }
-
-    // 构建实例
-    this.SERVICE_POND[id].instance = Reflect.construct(t, args);
-
-    // 自动无视属性，见 @Ignore
-    if (!isRestore && config.autoIgnore) {
-      const keys = Object.keys(this.SERVICE_POND[id].instance);
+    if (config.autoIgnore) {
+      const keys = Object.keys(instance);
       const isRegexp = config.autoIgnore instanceof RegExp;
       keys
         .filter((k) =>
@@ -140,56 +98,83 @@ export class ServiceManager {
         )
         .forEach((k) => this.injectIgnore(t.prototype, k));
     }
+  }
 
-    // 获取ignores元数据
+  /**
+   * 注册服务
+   */
+  register(t: Target_t<any>): ServiceCache {
+    const oldID = this.getID(t);
+    const cache = this.SERVICE_POND[oldID!] as ServiceCache | undefined;
+    if (cache && !cache.isDestory) return cache; // 存在并且激活状态直接返回
+
+    const isRestore = cache && cache.isDestory;
+
+    // 重链服务
+    if (isRestore && cache && cache.isKeep) {
+      cache.isDestory = false;
+      this.SERVICE_POND[oldID!].proxy.OnLink?.(); // 触发重链钩子
+      return cache;
+    }
+
+    const config = this.getMeta<Required<ServiceConfig_t>>(t, SERVICE_CONFIG);
+
+    if (isRestore) {
+      cache.isDestory = false;
+    } else {
+      this.SERVICE_POND[config.id] = {
+        isDestory: false,
+        isKeep: false,
+      } as ServiceCache;
+    }
+    const service = this.SERVICE_POND[config.id];
+    service.instance = Reflect.construct(t, this.getArgs(t));
+    if (!isRestore) this.setAutoIgnore(t, service.instance); // 自动无视属性
     const ignores = this.getMeta<ServiceIgnore_t>(t, SERVICE_IGNORES) ?? {};
-    this.SERVICE_POND[id].proxy = observable(
-      this.SERVICE_POND[id].instance,
+
+    this.setMeta(t, SERVICE_CONFIG, undefined);
+    service.proxy = observable(
+      service.instance,
       () => {
-        if (this.SERVICE_POND[id].isDestory) return;
-        this.SERVICE_POND[id].change$?.next(undefined);
+        if (service.isDestory) return;
+        service.change$?.next(undefined);
       },
       ignores
     );
+    this.setMeta(t, SERVICE_CONFIG, config);
 
-    this.setMeta(t, SERVICE_ID, id);
     if (!isRestore) {
-      this.SERVICE_POND[id].change$ = new BehaviorSubject(undefined);
-      this.SERVICE_POND[id].change$.pipe(debounceTime(10)).subscribe(() => {
-        this.SERVICE_POND[id].proxy.OnUpdate?.();
+      service.change$ = new BehaviorSubject(undefined);
+      service.change$.pipe(debounceTime(10)).subscribe(() => {
+        service.proxy.OnUpdate?.();
       });
     }
 
     // 设置延迟服务
-    this.setLate(t, this.SERVICE_POND[id].proxy);
+    this.setLate(t, service.proxy);
 
     if (config?.staticInstance?.trim()) {
-      this.setMeta(t, config.staticInstance, this.SERVICE_POND[id].proxy);
-      this.setMeta(
-        t,
-        "_" + config.staticInstance,
-        this.SERVICE_POND[id].instance
-      );
+      this.setMeta(t, config.staticInstance, service.proxy);
+      this.setMeta(t, "_" + config.staticInstance, service.instance);
     }
 
     // 通知所有 RxService 组件，有新的全局服务已经添加
     if (config.global) {
-      this.gServiceList = [
-        ...new Set([...this.gServiceList, this.SERVICE_POND[id].change$]),
-      ];
+      this.gServiceList = [...new Set([...this.gServiceList, service.change$])];
       this.GLOBAL_SERVICE$.next(this.gServiceList);
     }
 
-    this.SERVICE_POND[id].proxy.OnCreate?.();
-    return this.SERVICE_POND[id];
+    service.proxy.OnCreate?.();
+    return service;
   }
 
   /**
    * ! 不要销毁全局服务
    */
   destroy(t: Target_t<any>) {
-    const cache = this.SERVICE_POND[this.getID(t)];
-    // 返回true，下次初始化时不会重置数据
+    const id = this.getID(t);
+    if (!id) throw "destroy error: not find id!";
+    const cache = this.SERVICE_POND[id];
     cache.isKeep = cache.proxy?.OnDestroy?.() ?? false;
     cache.isDestory = true;
   }

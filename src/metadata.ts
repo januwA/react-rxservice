@@ -26,16 +26,17 @@ export function Ignore(config?: IgnoreConfig_t) {
  * ! 不要在服务内使用箭头函数
  */
 export function Injectable(config?: ServiceConfig_t) {
-  config = Object.assign(
-    {
-      staticInstance: "ins",
-      global: true,
-      autoIgnore: false,
-    } as ServiceConfig_t,
-    config
-  );
   const m = new ServiceManager();
   return function (t: Target_t<any>) {
+    config = Object.assign(
+      {
+        id: config?.id ?? `${++ServiceManager.ID}_${t.name}`,
+        staticInstance: "ins",
+        global: true,
+        autoIgnore: false,
+      } as ServiceConfig_t,
+      config
+    );
     m.setMeta(t, SERVICE_CONFIG, config);
 
     // 立即注册全局服务

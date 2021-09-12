@@ -3,15 +3,16 @@ import { Target_t, ServiceCache, ServiceProxy, RxServiceSubject, IgnoreConfig_t 
 export declare class ServiceManager {
     static ID: number;
     static ins: ServiceManager;
-    static isService(proxy: ServiceProxy): boolean;
+    static isService(proxy: ServiceProxy): any;
     constructor();
     private gServiceList;
     GLOBAL_SERVICE$: BehaviorSubject<RxServiceSubject<any>[]>;
     private SERVICE_LATE_TABLE;
     private SERVICE_POND;
-    getID(t: Target_t<any>): string;
+    getID(t: Target_t<any>): string | undefined;
     setLate(t: Target_t<any>, proxy: ServiceProxy): void;
     private getArgs;
+    private setAutoIgnore;
     register(t: Target_t<any>): ServiceCache;
     destroy(t: Target_t<any>): void;
     getMeta<T = any>(t: Target_t<any>, key: string): T;

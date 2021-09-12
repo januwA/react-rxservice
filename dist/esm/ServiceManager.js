@@ -1,5 +1,5 @@
 import { BehaviorSubject, debounceTime } from "rxjs";
-import { SERVICE_IGNORES, SERVICE_LATE, SERVICE_CONFIG, SERVICE_ID, } from "./const";
+import { SERVICE_IGNORES, SERVICE_LATE, SERVICE_CONFIG } from "./const";
 import { observable } from "./observable";
 export class ServiceManager {
     constructor() {
@@ -11,11 +11,13 @@ export class ServiceManager {
         return ((_a = ServiceManager.ins) !== null && _a !== void 0 ? _a : (ServiceManager.ins = this));
     }
     static isService(proxy) {
-        return (Object.prototype.toString.call(proxy) === "[object Object]" &&
-            SERVICE_ID in Object.getPrototypeOf(proxy).constructor);
+        if (!proxy)
+            return false;
+        return Object.getPrototypeOf(proxy).constructor[SERVICE_CONFIG];
     }
     getID(t) {
-        return this.getMeta(t, SERVICE_ID);
+        var _a;
+        return (_a = this.getMeta(t, SERVICE_CONFIG)) === null || _a === void 0 ? void 0 : _a.id;
     }
     setLate(t, proxy) {
         var _a;
@@ -50,73 +52,76 @@ export class ServiceManager {
         }
         return [];
     }
-    register(t) {
-        var _a, _b, _c, _d, _e, _f, _g;
-        const oldId = this.getID(t);
-        const cache = this.SERVICE_POND[oldId];
-        if (cache && !cache.isDestory)
-            return cache;
-        const isRestore = cache && cache.isDestory;
-        if (isRestore && cache && cache.isKeep) {
-            cache.isDestory = false;
-            (_b = (_a = this.SERVICE_POND[oldId].proxy).OnLink) === null || _b === void 0 ? void 0 : _b.call(_a);
-            return cache;
-        }
+    setAutoIgnore(t, instance) {
         const config = this.getMeta(t, SERVICE_CONFIG);
-        const args = this.getArgs(t);
-        const id = isRestore
-            ? oldId
-            : (_c = config.id) !== null && _c !== void 0 ? _c : `${++ServiceManager.ID}_${t.name}`;
-        if (isRestore) {
-            cache.isDestory = false;
-            delete t.prototype.constructor[SERVICE_ID];
-        }
-        else {
-            this.SERVICE_POND[id] = {
-                isDestory: false,
-                isKeep: false,
-            };
-        }
-        this.SERVICE_POND[id].instance = Reflect.construct(t, args);
-        if (!isRestore && config.autoIgnore) {
-            const keys = Object.keys(this.SERVICE_POND[id].instance);
+        if (config.autoIgnore) {
+            const keys = Object.keys(instance);
             const isRegexp = config.autoIgnore instanceof RegExp;
             keys
                 .filter((k) => isRegexp ? config.autoIgnore.test(k) : k.endsWith("_"))
                 .forEach((k) => this.injectIgnore(t.prototype, k));
         }
-        const ignores = (_d = this.getMeta(t, SERVICE_IGNORES)) !== null && _d !== void 0 ? _d : {};
-        this.SERVICE_POND[id].proxy = observable(this.SERVICE_POND[id].instance, () => {
+    }
+    register(t) {
+        var _a, _b, _c, _d, _e, _f;
+        const oldID = this.getID(t);
+        const cache = this.SERVICE_POND[oldID];
+        if (cache && !cache.isDestory)
+            return cache;
+        const isRestore = cache && cache.isDestory;
+        if (isRestore && cache && cache.isKeep) {
+            cache.isDestory = false;
+            (_b = (_a = this.SERVICE_POND[oldID].proxy).OnLink) === null || _b === void 0 ? void 0 : _b.call(_a);
+            return cache;
+        }
+        const config = this.getMeta(t, SERVICE_CONFIG);
+        if (isRestore) {
+            cache.isDestory = false;
+        }
+        else {
+            this.SERVICE_POND[config.id] = {
+                isDestory: false,
+                isKeep: false,
+            };
+        }
+        const service = this.SERVICE_POND[config.id];
+        service.instance = Reflect.construct(t, this.getArgs(t));
+        if (!isRestore)
+            this.setAutoIgnore(t, service.instance);
+        const ignores = (_c = this.getMeta(t, SERVICE_IGNORES)) !== null && _c !== void 0 ? _c : {};
+        this.setMeta(t, SERVICE_CONFIG, undefined);
+        service.proxy = observable(service.instance, () => {
             var _a;
-            if (this.SERVICE_POND[id].isDestory)
+            if (service.isDestory)
                 return;
-            (_a = this.SERVICE_POND[id].change$) === null || _a === void 0 ? void 0 : _a.next(undefined);
+            (_a = service.change$) === null || _a === void 0 ? void 0 : _a.next(undefined);
         }, ignores);
-        this.setMeta(t, SERVICE_ID, id);
+        this.setMeta(t, SERVICE_CONFIG, config);
         if (!isRestore) {
-            this.SERVICE_POND[id].change$ = new BehaviorSubject(undefined);
-            this.SERVICE_POND[id].change$.pipe(debounceTime(10)).subscribe(() => {
+            service.change$ = new BehaviorSubject(undefined);
+            service.change$.pipe(debounceTime(10)).subscribe(() => {
                 var _a, _b;
-                (_b = (_a = this.SERVICE_POND[id].proxy).OnUpdate) === null || _b === void 0 ? void 0 : _b.call(_a);
+                (_b = (_a = service.proxy).OnUpdate) === null || _b === void 0 ? void 0 : _b.call(_a);
             });
         }
-        this.setLate(t, this.SERVICE_POND[id].proxy);
-        if ((_e = config === null || config === void 0 ? void 0 : config.staticInstance) === null || _e === void 0 ? void 0 : _e.trim()) {
-            this.setMeta(t, config.staticInstance, this.SERVICE_POND[id].proxy);
-            this.setMeta(t, "_" + config.staticInstance, this.SERVICE_POND[id].instance);
+        this.setLate(t, service.proxy);
+        if ((_d = config === null || config === void 0 ? void 0 : config.staticInstance) === null || _d === void 0 ? void 0 : _d.trim()) {
+            this.setMeta(t, config.staticInstance, service.proxy);
+            this.setMeta(t, "_" + config.staticInstance, service.instance);
         }
         if (config.global) {
-            this.gServiceList = [
-                ...new Set([...this.gServiceList, this.SERVICE_POND[id].change$]),
-            ];
+            this.gServiceList = [...new Set([...this.gServiceList, service.change$])];
             this.GLOBAL_SERVICE$.next(this.gServiceList);
         }
-        (_g = (_f = this.SERVICE_POND[id].proxy).OnCreate) === null || _g === void 0 ? void 0 : _g.call(_f);
-        return this.SERVICE_POND[id];
+        (_f = (_e = service.proxy).OnCreate) === null || _f === void 0 ? void 0 : _f.call(_e);
+        return service;
     }
     destroy(t) {
         var _a, _b, _c;
-        const cache = this.SERVICE_POND[this.getID(t)];
+        const id = this.getID(t);
+        if (!id)
+            throw "destroy error: not find id!";
+        const cache = this.SERVICE_POND[id];
         cache.isKeep = (_c = (_b = (_a = cache.proxy) === null || _a === void 0 ? void 0 : _a.OnDestroy) === null || _b === void 0 ? void 0 : _b.call(_a)) !== null && _c !== void 0 ? _c : false;
         cache.isDestory = true;
     }
