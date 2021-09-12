@@ -10,6 +10,8 @@ export function Injectable(config) {
     const m = new ServiceManager();
     return function (t) {
         var _a;
+        if (m.TARGET_ID_MAP.has(t))
+            return;
         config = Object.assign({
             id: (_a = config === null || config === void 0 ? void 0 : config.id) !== null && _a !== void 0 ? _a : `${++ServiceManager.ID}_${t.name}`,
             staticInstance: "ins",

@@ -37,8 +37,8 @@ export class ServiceManager {
   /**
    * 使用Target映射service id
    */
-  private TARGET_ID_MAP = new Map<Target_t<any>, string>();
-  private SERVICE_POND: {
+  TARGET_ID_MAP = new Map<Target_t<any>, string>();
+  SERVICE_POND: {
     [id: string]: ServiceCache;
   } = {};
 

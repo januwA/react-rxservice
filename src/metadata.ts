@@ -28,6 +28,9 @@ export function Ignore(config?: IgnoreConfig_t) {
 export function Injectable(config?: ServiceConfig_t) {
   const m = new ServiceManager();
   return function (t: Target_t<any>) {
+    // 避免多次 Injectable
+    if (m.TARGET_ID_MAP.has(t)) return;
+
     config = Object.assign(
       {
         id: config?.id ?? `${++ServiceManager.ID}_${t.name}`,
