@@ -107,6 +107,7 @@ export class ServiceManager {
     // 如果保持了数据状态，直接返回
     if (isRestore && cache && cache.isKeep) {
       cache.isDestory = false;
+      this.SERVICE_POND[oldId].proxy.OnLink?.(); // 触发重连钩子
       return cache;
     }
 

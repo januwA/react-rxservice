@@ -51,7 +51,7 @@ export class ServiceManager {
         return [];
     }
     register(t) {
-        var _a, _b, _c, _d, _e;
+        var _a, _b, _c, _d, _e, _f, _g;
         const oldId = this.getID(t);
         const cache = this.SERVICE_POND[oldId];
         if (cache && !cache.isDestory)
@@ -59,13 +59,14 @@ export class ServiceManager {
         const isRestore = cache && cache.isDestory;
         if (isRestore && cache && cache.isKeep) {
             cache.isDestory = false;
+            (_b = (_a = this.SERVICE_POND[oldId].proxy).OnLink) === null || _b === void 0 ? void 0 : _b.call(_a);
             return cache;
         }
         const config = this.getMeta(t, SERVICE_CONFIG);
         const args = this.getArgs(t);
         const id = isRestore
             ? oldId
-            : (_a = config.id) !== null && _a !== void 0 ? _a : `${++ServiceManager.ID}_${t.name}`;
+            : (_c = config.id) !== null && _c !== void 0 ? _c : `${++ServiceManager.ID}_${t.name}`;
         if (isRestore) {
             cache.isDestory = false;
             delete t.prototype.constructor[SERVICE_ID];
@@ -84,7 +85,7 @@ export class ServiceManager {
                 .filter((k) => isRegexp ? config.autoIgnore.test(k) : k.endsWith("_"))
                 .forEach((k) => this.injectIgnore(t.prototype, k));
         }
-        const ignores = (_b = this.getMeta(t, SERVICE_IGNORES)) !== null && _b !== void 0 ? _b : {};
+        const ignores = (_d = this.getMeta(t, SERVICE_IGNORES)) !== null && _d !== void 0 ? _d : {};
         this.SERVICE_POND[id].proxy = observable(this.SERVICE_POND[id].instance, () => {
             var _a;
             if (this.SERVICE_POND[id].isDestory)
@@ -100,7 +101,7 @@ export class ServiceManager {
             });
         }
         this.setLate(t, this.SERVICE_POND[id].proxy);
-        if ((_c = config === null || config === void 0 ? void 0 : config.staticInstance) === null || _c === void 0 ? void 0 : _c.trim()) {
+        if ((_e = config === null || config === void 0 ? void 0 : config.staticInstance) === null || _e === void 0 ? void 0 : _e.trim()) {
             this.setMeta(t, config.staticInstance, this.SERVICE_POND[id].proxy);
             this.setMeta(t, "_" + config.staticInstance, this.SERVICE_POND[id].instance);
         }
@@ -110,7 +111,7 @@ export class ServiceManager {
             ];
             this.GLOBAL_SERVICE$.next(this.gServiceList);
         }
-        (_e = (_d = this.SERVICE_POND[id].proxy).OnCreate) === null || _e === void 0 ? void 0 : _e.call(_d);
+        (_g = (_f = this.SERVICE_POND[id].proxy).OnCreate) === null || _g === void 0 ? void 0 : _g.call(_f);
         return this.SERVICE_POND[id];
     }
     destroy(t) {

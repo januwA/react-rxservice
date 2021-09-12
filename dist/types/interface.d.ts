@@ -17,8 +17,8 @@ export declare type ServiceConfig_t = {
 export interface OnCreate {
     OnCreate(): any;
 }
-export interface OnChange {
-    OnChange(): any;
+export interface OnLink {
+    OnLink(): any;
 }
 export interface OnUpdate {
     OnUpdate(): any;
@@ -26,11 +26,10 @@ export interface OnUpdate {
 export interface OnDestroy {
     OnDestroy(): any;
 }
-export interface ServiceProxy extends Partial<OnCreate>, Partial<OnChange>, Partial<OnUpdate>, Partial<OnDestroy> {
-    [prop: PropertyKey]: any;
-}
 export interface AnyObject {
     [key: PropertyKey]: any;
+}
+export interface ServiceProxy extends Partial<OnCreate>, Partial<OnLink>, Partial<OnUpdate>, Partial<OnDestroy>, AnyObject {
 }
 export interface ServiceCache {
     proxy: ServiceProxy;

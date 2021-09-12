@@ -58,12 +58,10 @@ export interface OnCreate {
 }
 
 /**
- * 触发频率很高
- *
- * ! 不要再钩子里改变属性，会导致递归
+ * 重新链接服务时
  */
-export interface OnChange {
-  OnChange(): any;
+export interface OnLink {
+  OnLink(): any;
 }
 
 /**
@@ -76,23 +74,22 @@ export interface OnUpdate {
 }
 
 /**
- * service快要被销毁了
+ * 要被销毁前
  */
 export interface OnDestroy {
   OnDestroy(): any;
 }
 
-export interface ServiceProxy
-  extends Partial<OnCreate>,
-    Partial<OnChange>,
-    Partial<OnUpdate>,
-    Partial<OnDestroy> {
-  [prop: PropertyKey]: any;
-}
-
 export interface AnyObject {
   [key: PropertyKey]: any;
 }
+
+export interface ServiceProxy
+  extends Partial<OnCreate>,
+    Partial<OnLink>,
+    Partial<OnUpdate>,
+    Partial<OnDestroy>,
+    AnyObject {}
 
 export interface ServiceCache {
   /**
