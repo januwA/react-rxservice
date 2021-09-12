@@ -20,27 +20,33 @@ export class ServiceManager {
     return Object.getPrototypeOf(proxy).constructor[SERVICE_CONFIG];
   }
 
-  constructor() {
-    return (ServiceManager.ins ??= this);
-  }
-
-  private gServiceList: RxServiceSubject[] = [];
-  GLOBAL_SERVICE$ = new BehaviorSubject<RxServiceSubject[]>([]);
-
-  private SERVICE_LATE_TABLE: {
+  private gServiceList!: RxServiceSubject[];
+  GLOBAL_SERVICE$!: BehaviorSubject<RxServiceSubject[]>;
+  private SERVICE_LATE_TABLE!: {
     [id: string]: {
       prop: string;
       proxy: ServiceProxy;
     }[];
-  } = {};
+  };
 
   /**
    * 使用Target映射service id
    */
-  TARGET_ID_MAP = new Map<Target_t<any>, string>();
-  SERVICE_POND: {
+  TARGET_ID_MAP!: WeakMap<Target_t<any>, string>;
+  SERVICE_POND!: {
     [id: string]: ServiceCache;
-  } = {};
+  };
+
+  constructor() {
+    if (ServiceManager.ins) return ServiceManager.ins;
+
+    this.gServiceList = [];
+    this.GLOBAL_SERVICE$ = new BehaviorSubject<RxServiceSubject[]>([]);
+    this.SERVICE_LATE_TABLE = {};
+    this.TARGET_ID_MAP = new WeakMap<Target_t<any>, string>();
+    this.SERVICE_POND = {};
+    return (ServiceManager.ins = this);
+  }
 
   /**
    * 处理装饰器 @Late

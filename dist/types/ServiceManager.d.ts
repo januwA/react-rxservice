@@ -4,14 +4,14 @@ export declare class ServiceManager {
     static ID: number;
     static ins: ServiceManager;
     static isService(proxy: ServiceProxy): any;
-    constructor();
     private gServiceList;
-    GLOBAL_SERVICE$: BehaviorSubject<RxServiceSubject<any>[]>;
+    GLOBAL_SERVICE$: BehaviorSubject<RxServiceSubject[]>;
     private SERVICE_LATE_TABLE;
-    TARGET_ID_MAP: Map<Target_t<any>, string>;
+    TARGET_ID_MAP: WeakMap<Target_t<any>, string>;
     SERVICE_POND: {
         [id: string]: ServiceCache;
     };
+    constructor();
     setLate(t: Target_t<any>, proxy: ServiceProxy): void;
     private getArgs;
     private setAutoIgnore;

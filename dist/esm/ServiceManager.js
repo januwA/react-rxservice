@@ -3,13 +3,14 @@ import { SERVICE_IGNORES, SERVICE_LATE, SERVICE_CONFIG } from "./const";
 import { observable } from "./observable";
 export class ServiceManager {
     constructor() {
-        var _a;
+        if (ServiceManager.ins)
+            return ServiceManager.ins;
         this.gServiceList = [];
         this.GLOBAL_SERVICE$ = new BehaviorSubject([]);
         this.SERVICE_LATE_TABLE = {};
-        this.TARGET_ID_MAP = new Map();
+        this.TARGET_ID_MAP = new WeakMap();
         this.SERVICE_POND = {};
-        return ((_a = ServiceManager.ins) !== null && _a !== void 0 ? _a : (ServiceManager.ins = this));
+        return (ServiceManager.ins = this);
     }
     static isService(proxy) {
         if (!proxy)

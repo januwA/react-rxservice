@@ -7,18 +7,17 @@ import {
   useService,
   ServiceProxy,
   Ignore,
+  ServiceManager,
 } from "../src";
 
 @Injectable({ global: false, autoIgnore: true })
 class PS implements ServiceProxy {
   i = 0;
-
-  OnDestroy() {
-    // return true;
-  }
 }
 
 export default memo(() => {
+  const m = new ServiceManager();
+  console.log( m.TARGET_ID_MAP.has(PS) );
   const [ps] = useService(PS);
 
   return (
