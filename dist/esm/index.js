@@ -1,4 +1,13 @@
-export { RxService } from "./RxService";
-export { useService } from "./useService";
-export { Injectable, Ignore, Late } from "./metadata";
-export { ServiceManager } from "./ServiceManager";
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ServiceManager = exports.Late = exports.Ignore = exports.Injectable = exports.useService = exports.RxService = void 0;
+var RxService_1 = require("./RxService");
+Object.defineProperty(exports, "RxService", { enumerable: true, get: function () { return RxService_1.RxService; } });
+var useService_1 = require("./useService");
+Object.defineProperty(exports, "useService", { enumerable: true, get: function () { return useService_1.useService; } });
+var metadata_1 = require("./metadata");
+Object.defineProperty(exports, "Injectable", { enumerable: true, get: function () { return metadata_1.Injectable; } });
+Object.defineProperty(exports, "Ignore", { enumerable: true, get: function () { return metadata_1.Ignore; } });
+Object.defineProperty(exports, "Late", { enumerable: true, get: function () { return metadata_1.Late; } });
+var ServiceManager_1 = require("./ServiceManager");
+Object.defineProperty(exports, "ServiceManager", { enumerable: true, get: function () { return ServiceManager_1.ServiceManager; } });

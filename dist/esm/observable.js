@@ -1,4 +1,7 @@
-import { ServiceManager } from "./ServiceManager";
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.observable = void 0;
+const ServiceManager_1 = require("./ServiceManager");
 function isLikeObject(value) {
     return typeof value === "object" && value !== null;
 }
@@ -10,10 +13,10 @@ function getOwnPropertyDescriptor(target, key) {
         return des;
     return getOwnPropertyDescriptor(Object.getPrototypeOf(target), key);
 }
-export function observable(obj, changed, ignores = Object.create(null)) {
+function observable(obj, changed, ignores = Object.create(null)) {
     if (!isLikeObject(obj))
         return obj;
-    if (ServiceManager.isService(obj))
+    if (ServiceManager_1.ServiceManager.isService(obj))
         return obj;
     for (const key in obj) {
         if (key in ignores && ignores[key].init)
@@ -48,3 +51,4 @@ export function observable(obj, changed, ignores = Object.create(null)) {
     });
     return proxy;
 }
+exports.observable = observable;

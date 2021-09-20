@@ -3,6 +3,7 @@
   "compilerOptions": {
     "rootDir": "./src/",
     "outDir": "./dist/types",
+    "module": "commonjs", /* Specify module code generation: 'none', 'commonjs', 'amd', 'system', 'umd', 'es2015', 'es2020', or 'ESNext'. */
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true
@@ -10,6 +11,7 @@
   "exclude": [
     "config",
     "dist",
+    "test.ts",
     "examples"
   ]
 }

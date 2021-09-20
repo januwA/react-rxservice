@@ -1,34 +1,41 @@
-import React, { memo, useEffect, useState } from "react";
-import {
-  Injectable,
-  Late,
-  OnDestroy,
-  RxService,
-  useService,
-  ServiceProxy,
-  Ignore,
-  ServiceManager,
-} from "../src";
+import React, { memo } from "react";
+import { Link } from "react-router-dom";
+import { Injectable, RxService, useService, ServiceProxy } from "../src";
+import { AppService } from "./service";
 
 @Injectable({ global: false, autoIgnore: true })
 class PS implements ServiceProxy {
   i = 0;
+
+  OnDestroy() {
+    return this.i < 2;
+  }
 }
 
 export default memo(() => {
-  const m = new ServiceManager();
-  console.log( m.TARGET_ID_MAP.has(PS) );
-  const [ps] = useService(PS);
+  const [ps, as] = useService(PS, AppService);
 
   return (
     <RxService
       services={[PS]}
-      global={false}
       builder={(c: number) => {
         return (
           <div>
-            <p>{ps.i}</p>
-            <button onClick={() => ps.i++}>add page</button>
+            <p className="as-i" onClick={() => as.i++}>
+              {as.i}
+            </p>
+            <p className="as2-i">{as.as2.i}</p>
+            <p>
+              Page State:
+              <button className="ps-btn" onClick={() => ps.i++}>
+                {ps.i}
+              </button>
+            </p>
+            <p>
+              <Link to="../">
+                <button className="back-btn">back</button>
+              </Link>
+            </p>
           </div>
         );
       }}

@@ -1,12 +1,15 @@
-import { BehaviorSubject, debounceTime } from "rxjs";
-import { SERVICE_IGNORES, SERVICE_LATE, SERVICE_CONFIG } from "./const";
-import { observable } from "./observable";
-export class ServiceManager {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ServiceManager = void 0;
+const rxjs_1 = require("rxjs");
+const const_1 = require("./const");
+const observable_1 = require("./observable");
+class ServiceManager {
     constructor() {
         if (ServiceManager.ins)
             return ServiceManager.ins;
         this.gServiceList = [];
-        this.GLOBAL_SERVICE$ = new BehaviorSubject([]);
+        this.GLOBAL_SERVICE$ = new rxjs_1.BehaviorSubject([]);
         this.SERVICE_LATE_TABLE = {};
         this.TARGET_ID_MAP = new WeakMap();
         this.SERVICE_POND = {};
@@ -15,7 +18,7 @@ export class ServiceManager {
     static isService(proxy) {
         if (!proxy)
             return false;
-        return Object.getPrototypeOf(proxy).constructor[SERVICE_CONFIG];
+        return Object.getPrototypeOf(proxy).constructor[const_1.SERVICE_CONFIG];
     }
     setLate(t, proxy) {
         var _a;
@@ -26,7 +29,7 @@ export class ServiceManager {
             lateList.forEach((late) => (late.proxy[late.prop] = proxy));
             delete this.SERVICE_LATE_TABLE[id];
         }
-        const lates = this.getMeta(t, SERVICE_LATE);
+        const lates = this.getMeta(t, const_1.SERVICE_LATE);
         if (!lates)
             return;
         for (const prop in lates) {
@@ -51,7 +54,7 @@ export class ServiceManager {
         return [];
     }
     setAutoIgnore(t, instance) {
-        const config = this.getMeta(t, SERVICE_CONFIG);
+        const config = this.getMeta(t, const_1.SERVICE_CONFIG);
         if (config.autoIgnore) {
             const keys = Object.keys(instance);
             const isRegexp = config.autoIgnore instanceof RegExp;
@@ -76,16 +79,16 @@ export class ServiceManager {
             (_b = (_a = this.SERVICE_POND[oldID].proxy).OnLink) === null || _b === void 0 ? void 0 : _b.call(_a);
             return cache;
         }
-        const config = this.getMeta(t, SERVICE_CONFIG);
+        const config = this.getMeta(t, const_1.SERVICE_CONFIG);
         if (!isRestore) {
-            const change$ = new BehaviorSubject(undefined);
+            const change$ = new rxjs_1.BehaviorSubject(undefined);
             this.SERVICE_POND[config.id] = {
                 isDestory: false,
                 isKeep: false,
                 change$,
             };
             this.TARGET_ID_MAP.set(t, config.id);
-            change$.pipe(debounceTime(10)).subscribe(() => {
+            change$.pipe((0, rxjs_1.debounceTime)(10)).subscribe(() => {
                 var _a, _b;
                 (_b = (_a = service.proxy).OnUpdate) === null || _b === void 0 ? void 0 : _b.call(_a);
             });
@@ -94,15 +97,15 @@ export class ServiceManager {
         service.instance = Reflect.construct(t, this.getArgs(t));
         if (!isRestore)
             this.setAutoIgnore(t, service.instance);
-        const ignores = (_c = this.getMeta(t, SERVICE_IGNORES)) !== null && _c !== void 0 ? _c : {};
-        this.setMeta(t, SERVICE_CONFIG, undefined);
-        service.proxy = observable(service.instance, () => {
+        const ignores = (_c = this.getMeta(t, const_1.SERVICE_IGNORES)) !== null && _c !== void 0 ? _c : {};
+        this.setMeta(t, const_1.SERVICE_CONFIG, undefined);
+        service.proxy = (0, observable_1.observable)(service.instance, () => {
             var _a;
             if (service.isDestory)
                 return;
             (_a = service.change$) === null || _a === void 0 ? void 0 : _a.next(undefined);
         }, ignores);
-        this.setMeta(t, SERVICE_CONFIG, config);
+        this.setMeta(t, const_1.SERVICE_CONFIG, config);
         this.setLate(t, service.proxy);
         if ((_d = config === null || config === void 0 ? void 0 : config.staticInstance) === null || _d === void 0 ? void 0 : _d.trim()) {
             this.setMeta(t, config.staticInstance, service.proxy);
@@ -132,7 +135,7 @@ export class ServiceManager {
         return (t.prototype.constructor[key] = value);
     }
     isGlobal(t) {
-        const c = this.getMeta(t, SERVICE_CONFIG);
+        const c = this.getMeta(t, const_1.SERVICE_CONFIG);
         return c.global;
     }
     getService(t) {
@@ -141,14 +144,15 @@ export class ServiceManager {
     injectIgnore(t, key, config) {
         var _a;
         var _b;
-        (_a = (_b = t.constructor)[SERVICE_IGNORES]) !== null && _a !== void 0 ? _a : (_b[SERVICE_IGNORES] = {});
-        t.constructor[SERVICE_IGNORES][key] = Object.assign({ init: true, get: true, set: true }, config);
+        (_a = (_b = t.constructor)[const_1.SERVICE_IGNORES]) !== null && _a !== void 0 ? _a : (_b[const_1.SERVICE_IGNORES] = {});
+        t.constructor[const_1.SERVICE_IGNORES][key] = Object.assign({ init: true, get: true, set: true }, config);
     }
     injectLate(t, key, sid) {
         var _a;
         var _b;
-        (_a = (_b = t.constructor)[SERVICE_LATE]) !== null && _a !== void 0 ? _a : (_b[SERVICE_LATE] = {});
-        t.constructor[SERVICE_LATE][key] = sid;
+        (_a = (_b = t.constructor)[const_1.SERVICE_LATE]) !== null && _a !== void 0 ? _a : (_b[const_1.SERVICE_LATE] = {});
+        t.constructor[const_1.SERVICE_LATE][key] = sid;
     }
 }
+exports.ServiceManager = ServiceManager;
 ServiceManager.ID = 0;

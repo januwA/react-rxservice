@@ -1,40 +1,37 @@
-import { memo } from "react";
+import React, { memo } from "react";
 import { Link } from "react-router-dom";
-import {
-  Injectable,
-  Late,
-  OnCreate,
-  RxService,
-  ServiceManager,
-  useService,
-} from "../src";
-
-@Injectable({ global: false })
-class UserinfoService {
-  i = 0;
-}
-
-@Injectable({ global: false, id: "AppService" })
-class AppService {
-  i = 0;
-}
+import { RxService, useService } from "../src";
+import { AppService } from "./service";
 
 export default memo(() => {
-  const [as, us] = useService(AppService, UserinfoService);
-
-  const m = new ServiceManager();
+  const [as] = useService(AppService);
   return (
     <RxService
-      services={[AppService, UserinfoService, AppService]}
-      global={false}
       builder={() => {
-        console.log(m);
-
         return (
           <div>
-            <p onClick={() => as.i++}>{as.i}</p>
-            <p onClick={() => us.i++}>{us.i}</p>
-            <Link to="/about">about</Link>
+            <p>
+              State:
+              <button className="add-btn" onClick={as.add}>
+                {as.i}
+              </button>
+            </p>
+            <p>
+              Ignore:
+              <button className="ignore-btn" onClick={() => as.i_++}>
+                {as.i_}
+              </button>
+            </p>
+            <p>
+              Late:
+              <button className="late-btn" onClick={() => as.as2.i++}>
+                {as.as2.i}
+              </button>
+            </p>
+            <br />
+            <Link to="/about">
+              <button className="to-about-page-btn">about</button>
+            </Link>
           </div>
         );
       }}
