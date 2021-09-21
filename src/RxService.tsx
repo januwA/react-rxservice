@@ -15,6 +15,7 @@ import {
   tap,
 } from "rxjs";
 import { ServiceManager } from ".";
+import { DEBOUNCE_TIME } from "./const";
 import { Target_t } from "./interface";
 
 /**
@@ -59,7 +60,7 @@ export const RxService: FC<{
 
     obs.subscribe((stream: any) => {
       sub = (stream as Observable<any[]>)
-        .pipe(pipe(skip(1), mapTo(undefined), debounceTime(10)))
+        .pipe(pipe(skip(1), mapTo(undefined), debounceTime(DEBOUNCE_TIME)))
         .subscribe(() => inc((c) => c + 1));
     });
 

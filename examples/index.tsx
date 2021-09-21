@@ -1,8 +1,9 @@
 import "reflect-metadata";
 import ReactDOM from "react-dom";
 import { BrowserRouter, Switch, Route } from "react-router-dom";
-import App from "./app";
-import About from "./about";
+import App from "./pages/app";
+import About from "./pages/about";
+import Todos from "./pages/todos";
 
 ReactDOM.render(
   <BrowserRouter>
@@ -13,6 +14,10 @@ ReactDOM.render(
 
       <Route exact path="/about">
         <About />
+      </Route>
+
+      <Route exact path="/todos">
+        <Todos />
       </Route>
     </Switch>
   </BrowserRouter>,

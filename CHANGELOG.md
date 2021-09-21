@@ -1,3 +1,8 @@
+## 1.0.7 [2021-9-21]
+
+- ✅ add todos test
+- 🔨 Refactor the register function
+
 ## 1.0.6 [2021-9-20]
 
 - ✅ add test

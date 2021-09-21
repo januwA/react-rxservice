@@ -1,5 +1,11 @@
 import { BehaviorSubject, debounceTime } from "rxjs";
-import { SERVICE_IGNORES, SERVICE_LATE, SERVICE_CONFIG } from "./const";
+import {
+  SERVICE_IGNORES,
+  SERVICE_LATE,
+  SERVICE_CONFIG,
+  DEBOUNCE_TIME,
+  RFLAG,
+} from "./const";
 import {
   Target_t,
   ServiceCache,
@@ -14,10 +20,24 @@ import { observable } from "./observable";
 
 export class ServiceManager {
   static ID = 0;
-  static ins: ServiceManager;
+  private static ins: ServiceManager;
+
   static isService(proxy: ServiceProxy) {
     if (!proxy) return false;
     return Object.getPrototypeOf(proxy).constructor[SERVICE_CONFIG];
+  }
+
+  static injectIgnore(t: any, key: any, config?: IgnoreConfig_t) {
+    t.constructor[SERVICE_IGNORES] ??= {};
+    t.constructor[SERVICE_IGNORES][key] = Object.assign(
+      { init: true, get: true, set: true },
+      config
+    );
+  }
+
+  static injectLate(t: any, key: any, sid: string) {
+    t.constructor[SERVICE_LATE] ??= {};
+    t.constructor[SERVICE_LATE][key] = sid;
   }
 
   private gServiceList!: RxServiceSubject[];
@@ -51,7 +71,7 @@ export class ServiceManager {
   /**
    * 处理装饰器 @Late
    */
-  setLate(t: Target_t<any>, proxy: ServiceProxy) {
+  private setLate(t: Target_t<any>, proxy: ServiceProxy) {
     const id = this.TARGET_ID_MAP.get(t)!;
     if (id in this.SERVICE_LATE_TABLE) {
       const lateList = this.SERVICE_LATE_TABLE[id];
@@ -91,8 +111,12 @@ export class ServiceManager {
     return [];
   }
 
-  private setAutoIgnore(t: Target_t<any>, instance: AnyObject) {
+  private initAutoIgnore(t: Target_t<any>, instance: AnyObject) {
     const config = this.getMeta<ServiceConfig_t>(t, SERVICE_CONFIG);
+
+    const ignores = this.getMeta<ServiceIgnore_t>(t, SERVICE_IGNORES);
+    if (ignores) return ignores;
+
     if (config.autoIgnore) {
       const keys = Object.keys(instance);
       const isRegexp = config.autoIgnore instanceof RegExp;
@@ -100,77 +124,103 @@ export class ServiceManager {
         .filter((k) =>
           isRegexp ? (config.autoIgnore as RegExp).test(k) : k.endsWith("_")
         )
-        .forEach((k) => this.injectIgnore(t.prototype, k));
+        .forEach((k) => ServiceManager.injectIgnore(t.prototype, k));
     }
+    return this.getMeta<ServiceIgnore_t>(t, SERVICE_IGNORES) ?? {};
   }
 
   /**
    * 注册服务
    */
   register(t: Target_t<any>): ServiceCache {
-    const exist = this.TARGET_ID_MAP.has(t);
-    let oldID = undefined;
-    if (exist) oldID = this.TARGET_ID_MAP.get(t);
-    const cache = this.SERVICE_POND[oldID!] as ServiceCache | undefined;
-    if (cache && !cache.isDestory) return cache; // 存在并且激活状态直接返回
+    let flags = RFLAG.INIT;
 
-    const isRestore = cache && cache.isDestory;
-    if (isRestore) cache.isDestory = false;
+    // set flags
+    let cacheService: ServiceCache | undefined;
+    if (this.TARGET_ID_MAP.has(t)) {
+      flags |= RFLAG.EXIST;
+      const id = this.TARGET_ID_MAP.get(t);
+      cacheService = this.SERVICE_POND[id!] as ServiceCache;
 
-    // 重启服务
-    if (isRestore && cache && cache.isKeep) {
-      this.SERVICE_POND[oldID!].proxy.OnLink?.();
-      return cache;
+      if (cacheService.isDestory) {
+        flags |= RFLAG.DESTORY;
+        if (cacheService.isKeep) flags |= RFLAG.KEEP;
+      } else {
+        flags |= RFLAG.ACTIVE;
+      }
     }
+
+    if (flags & RFLAG.ACTIVE) return cacheService!;
 
     const config = this.getMeta<Required<ServiceConfig_t>>(t, SERVICE_CONFIG);
 
-    // 第一次初始化
-    if (!isRestore) {
-      const change$ = new BehaviorSubject<any>(undefined);
-      this.SERVICE_POND[config.id] = {
-        isDestory: false,
-        isKeep: false,
-        change$,
-      } as ServiceCache;
-      this.TARGET_ID_MAP.set(t, config.id);
-      change$.pipe(debounceTime(10)).subscribe(() => {
-        service.proxy.OnUpdate?.();
-      });
+    const initProxy = (service: ServiceCache) => {
+      service.instance = Reflect.construct(t, this.getArgs(t));
+      const ignores = this.initAutoIgnore(t, service.instance);
+
+      this.setMeta(t, SERVICE_CONFIG, undefined);
+      service.proxy = observable(
+        service.instance,
+        () => {
+          if (service.isDestory) return;
+          service.change$?.next(undefined);
+        },
+        ignores
+      );
+      this.setMeta(t, SERVICE_CONFIG, config);
+
+      // 设置延迟服务
+      this.setLate(t, service.proxy);
+
+      if (config?.staticInstance?.trim()) {
+        this.setStaticInstance(t, config.staticInstance, service);
+      }
+
+      // 通知全局服务订阅者
+      if (config.global) {
+        this.gServiceList = [
+          ...new Set([...this.gServiceList, service.change$]),
+        ];
+        this.GLOBAL_SERVICE$.next(this.gServiceList);
+      }
+
+      service.proxy.OnCreate?.();
+      return service;
+    };
+
+    if (flags & RFLAG.DESTORY) {
+      if (config.global) throw `ReactRxService: Don't destroy global services!`;
+
+      cacheService!.isDestory = false;
+
+      if (flags & RFLAG.KEEP)
+        return cacheService!.proxy.OnLink?.(), cacheService!;
+
+      // 重置数据
+      return initProxy(this.SERVICE_POND[config.id]);
     }
 
-    const service = this.SERVICE_POND[config.id];
-    service.instance = Reflect.construct(t, this.getArgs(t));
-    if (!isRestore) this.setAutoIgnore(t, service.instance); // 自动无视属性
-    const ignores = this.getMeta<ServiceIgnore_t>(t, SERVICE_IGNORES) ?? {};
+    if (flags & RFLAG.EXIST)
+      throw "ReactRxService: Service has been initialized!";
 
-    this.setMeta(t, SERVICE_CONFIG, undefined);
-    service.proxy = observable(
-      service.instance,
-      () => {
-        if (service.isDestory) return;
-        service.change$?.next(undefined);
-      },
-      ignores
-    );
-    this.setMeta(t, SERVICE_CONFIG, config);
+    const change$ = new BehaviorSubject<any>(undefined);
 
-    // 设置延迟服务
-    this.setLate(t, service.proxy);
+    // 在池中初始化
+    const service = (this.SERVICE_POND[config.id] = {
+      isDestory: false,
+      isKeep: false,
+      change$,
+    } as ServiceCache);
+    this.TARGET_ID_MAP.set(t, config.id);
 
-    if (config?.staticInstance?.trim()) {
-      this.setMeta(t, config.staticInstance, service.proxy);
-      this.setMeta(t, "_" + config.staticInstance, service.instance);
-    }
+    const _sub = change$.pipe(debounceTime(DEBOUNCE_TIME)).subscribe(() => {
+      service.proxy.OnUpdate?.();
 
-    // 通知所有 RxService 组件，有新的全局服务已经添加
-    if (config.global) {
-      this.gServiceList = [...new Set([...this.gServiceList, service.change$])];
-      this.GLOBAL_SERVICE$.next(this.gServiceList);
-    }
+      // 如果未初始化钩子，将取消这个订阅
+      if (!service.proxy.OnUpdate) _sub.unsubscribe();
+    });
 
-    service.proxy.OnCreate?.();
-    return service;
+    return initProxy(service);
   }
 
   /**
@@ -202,16 +252,8 @@ export class ServiceManager {
     return this.register(t);
   }
 
-  injectIgnore(t: any, key: any, config?: IgnoreConfig_t) {
-    t.constructor[SERVICE_IGNORES] ??= {};
-    t.constructor[SERVICE_IGNORES][key] = Object.assign(
-      { init: true, get: true, set: true },
-      config
-    );
-  }
-
-  injectLate(t: any, key: any, sid: string) {
-    t.constructor[SERVICE_LATE] ??= {};
-    t.constructor[SERVICE_LATE][key] = sid;
+  private setStaticInstance(t: Target_t, key: string, service: ServiceCache) {
+    this.setMeta(t, key, service.proxy);
+    this.setMeta(t, "_" + key, service.instance);
   }
 }

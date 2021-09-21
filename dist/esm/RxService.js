@@ -5,6 +5,7 @@ const jsx_runtime_1 = require("react/jsx-runtime");
 const react_1 = require("react");
 const rxjs_1 = require("rxjs");
 const _1 = require(".");
+const const_1 = require("./const");
 const RxService = ({ children, builder, services = [], global = true }) => {
     const [updateCount, inc] = (0, react_1.useState)(0);
     (0, react_1.useEffect)(() => {
@@ -18,7 +19,7 @@ const RxService = ({ children, builder, services = [], global = true }) => {
             : (0, rxjs_1.of)(sSubject).pipe((0, rxjs_1.map)((sSubject) => (0, rxjs_1.combineLatest)(sSubject)), _sharedPipe);
         obs.subscribe((stream) => {
             sub = stream
-                .pipe((0, rxjs_1.pipe)((0, rxjs_1.skip)(1), (0, rxjs_1.mapTo)(undefined), (0, rxjs_1.debounceTime)(10)))
+                .pipe((0, rxjs_1.pipe)((0, rxjs_1.skip)(1), (0, rxjs_1.mapTo)(undefined), (0, rxjs_1.debounceTime)(const_1.DEBOUNCE_TIME)))
                 .subscribe(() => inc((c) => c + 1));
         });
         return () => {

@@ -20,6 +20,18 @@ class ServiceManager {
             return false;
         return Object.getPrototypeOf(proxy).constructor[const_1.SERVICE_CONFIG];
     }
+    static injectIgnore(t, key, config) {
+        var _a;
+        var _b;
+        (_a = (_b = t.constructor)[const_1.SERVICE_IGNORES]) !== null && _a !== void 0 ? _a : (_b[const_1.SERVICE_IGNORES] = {});
+        t.constructor[const_1.SERVICE_IGNORES][key] = Object.assign({ init: true, get: true, set: true }, config);
+    }
+    static injectLate(t, key, sid) {
+        var _a;
+        var _b;
+        (_a = (_b = t.constructor)[const_1.SERVICE_LATE]) !== null && _a !== void 0 ? _a : (_b[const_1.SERVICE_LATE] = {});
+        t.constructor[const_1.SERVICE_LATE][key] = sid;
+    }
     setLate(t, proxy) {
         var _a;
         var _b;
@@ -53,70 +65,91 @@ class ServiceManager {
         }
         return [];
     }
-    setAutoIgnore(t, instance) {
+    initAutoIgnore(t, instance) {
+        var _a;
         const config = this.getMeta(t, const_1.SERVICE_CONFIG);
+        const ignores = this.getMeta(t, const_1.SERVICE_IGNORES);
+        if (ignores)
+            return ignores;
         if (config.autoIgnore) {
             const keys = Object.keys(instance);
             const isRegexp = config.autoIgnore instanceof RegExp;
             keys
                 .filter((k) => isRegexp ? config.autoIgnore.test(k) : k.endsWith("_"))
-                .forEach((k) => this.injectIgnore(t.prototype, k));
+                .forEach((k) => ServiceManager.injectIgnore(t.prototype, k));
         }
+        return (_a = this.getMeta(t, const_1.SERVICE_IGNORES)) !== null && _a !== void 0 ? _a : {};
     }
     register(t) {
-        var _a, _b, _c, _d, _e, _f;
-        const exist = this.TARGET_ID_MAP.has(t);
-        let oldID = undefined;
-        if (exist)
-            oldID = this.TARGET_ID_MAP.get(t);
-        const cache = this.SERVICE_POND[oldID];
-        if (cache && !cache.isDestory)
-            return cache;
-        const isRestore = cache && cache.isDestory;
-        if (isRestore)
-            cache.isDestory = false;
-        if (isRestore && cache && cache.isKeep) {
-            (_b = (_a = this.SERVICE_POND[oldID].proxy).OnLink) === null || _b === void 0 ? void 0 : _b.call(_a);
-            return cache;
+        var _a, _b;
+        let flags = const_1.RFLAG.INIT;
+        let cacheService;
+        if (this.TARGET_ID_MAP.has(t)) {
+            flags |= const_1.RFLAG.EXIST;
+            const id = this.TARGET_ID_MAP.get(t);
+            cacheService = this.SERVICE_POND[id];
+            if (cacheService.isDestory) {
+                flags |= const_1.RFLAG.DESTORY;
+                if (cacheService.isKeep) {
+                    flags |= const_1.RFLAG.KEEP;
+                }
+            }
+            else {
+                flags |= const_1.RFLAG.ACTIVE;
+            }
         }
+        if (flags & const_1.RFLAG.ACTIVE)
+            return cacheService;
         const config = this.getMeta(t, const_1.SERVICE_CONFIG);
-        if (!isRestore) {
-            const change$ = new rxjs_1.BehaviorSubject(undefined);
-            this.SERVICE_POND[config.id] = {
-                isDestory: false,
-                isKeep: false,
-                change$,
-            };
-            this.TARGET_ID_MAP.set(t, config.id);
-            change$.pipe((0, rxjs_1.debounceTime)(10)).subscribe(() => {
-                var _a, _b;
-                (_b = (_a = service.proxy).OnUpdate) === null || _b === void 0 ? void 0 : _b.call(_a);
-            });
+        const initProxy = (service) => {
+            var _a, _b, _c;
+            service.instance = Reflect.construct(t, this.getArgs(t));
+            const ignores = this.initAutoIgnore(t, service.instance);
+            this.setMeta(t, const_1.SERVICE_CONFIG, undefined);
+            service.proxy = (0, observable_1.observable)(service.instance, () => {
+                var _a;
+                if (service.isDestory)
+                    return;
+                (_a = service.change$) === null || _a === void 0 ? void 0 : _a.next(undefined);
+            }, ignores);
+            this.setMeta(t, const_1.SERVICE_CONFIG, config);
+            this.setLate(t, service.proxy);
+            if ((_a = config === null || config === void 0 ? void 0 : config.staticInstance) === null || _a === void 0 ? void 0 : _a.trim()) {
+                this.setStaticInstance(t, config.staticInstance, service);
+            }
+            if (config.global) {
+                this.gServiceList = [
+                    ...new Set([...this.gServiceList, service.change$]),
+                ];
+                this.GLOBAL_SERVICE$.next(this.gServiceList);
+            }
+            (_c = (_b = service.proxy).OnCreate) === null || _c === void 0 ? void 0 : _c.call(_b);
+            return service;
+        };
+        if (flags & const_1.RFLAG.DESTORY) {
+            if (config.global)
+                throw `ReactRxService: Don't destroy global services!`;
+            cacheService.isDestory = false;
+            if (flags & const_1.RFLAG.KEEP)
+                return (_b = (_a = cacheService.proxy).OnLink) === null || _b === void 0 ? void 0 : _b.call(_a), cacheService;
+            return initProxy(this.SERVICE_POND[config.id]);
         }
-        const service = this.SERVICE_POND[config.id];
-        service.instance = Reflect.construct(t, this.getArgs(t));
-        if (!isRestore)
-            this.setAutoIgnore(t, service.instance);
-        const ignores = (_c = this.getMeta(t, const_1.SERVICE_IGNORES)) !== null && _c !== void 0 ? _c : {};
-        this.setMeta(t, const_1.SERVICE_CONFIG, undefined);
-        service.proxy = (0, observable_1.observable)(service.instance, () => {
-            var _a;
-            if (service.isDestory)
-                return;
-            (_a = service.change$) === null || _a === void 0 ? void 0 : _a.next(undefined);
-        }, ignores);
-        this.setMeta(t, const_1.SERVICE_CONFIG, config);
-        this.setLate(t, service.proxy);
-        if ((_d = config === null || config === void 0 ? void 0 : config.staticInstance) === null || _d === void 0 ? void 0 : _d.trim()) {
-            this.setMeta(t, config.staticInstance, service.proxy);
-            this.setMeta(t, "_" + config.staticInstance, service.instance);
-        }
-        if (config.global) {
-            this.gServiceList = [...new Set([...this.gServiceList, service.change$])];
-            this.GLOBAL_SERVICE$.next(this.gServiceList);
-        }
-        (_f = (_e = service.proxy).OnCreate) === null || _f === void 0 ? void 0 : _f.call(_e);
-        return service;
+        if (flags & const_1.RFLAG.EXIST)
+            throw "ReactRxService: Service has been initialized!";
+        const change$ = new rxjs_1.BehaviorSubject(undefined);
+        const service = (this.SERVICE_POND[config.id] = {
+            isDestory: false,
+            isKeep: false,
+            change$,
+        });
+        this.TARGET_ID_MAP.set(t, config.id);
+        const _sub = change$.pipe((0, rxjs_1.debounceTime)(const_1.DEBOUNCE_TIME)).subscribe(() => {
+            var _a, _b;
+            (_b = (_a = service.proxy).OnUpdate) === null || _b === void 0 ? void 0 : _b.call(_a);
+            if (!service.proxy.OnUpdate)
+                _sub.unsubscribe();
+        });
+        return initProxy(service);
     }
     destroy(t) {
         var _a, _b, _c;
@@ -141,17 +174,9 @@ class ServiceManager {
     getService(t) {
         return this.register(t);
     }
-    injectIgnore(t, key, config) {
-        var _a;
-        var _b;
-        (_a = (_b = t.constructor)[const_1.SERVICE_IGNORES]) !== null && _a !== void 0 ? _a : (_b[const_1.SERVICE_IGNORES] = {});
-        t.constructor[const_1.SERVICE_IGNORES][key] = Object.assign({ init: true, get: true, set: true }, config);
-    }
-    injectLate(t, key, sid) {
-        var _a;
-        var _b;
-        (_a = (_b = t.constructor)[const_1.SERVICE_LATE]) !== null && _a !== void 0 ? _a : (_b[const_1.SERVICE_LATE] = {});
-        t.constructor[const_1.SERVICE_LATE][key] = sid;
+    setStaticInstance(t, key, service) {
+        this.setMeta(t, key, service.proxy);
+        this.setMeta(t, "_" + key, service.instance);
     }
 }
 exports.ServiceManager = ServiceManager;

@@ -4,11 +4,11 @@ exports.Injectable = exports.Ignore = exports.Late = void 0;
 const const_1 = require("./const");
 const ServiceManager_1 = require("./ServiceManager");
 function Late(sid) {
-    return (target, key, des) => new ServiceManager_1.ServiceManager().injectLate(target, key, sid);
+    return (target, key, des) => ServiceManager_1.ServiceManager.injectLate(target, key, sid);
 }
 exports.Late = Late;
 function Ignore(config) {
-    return (target, key, des) => new ServiceManager_1.ServiceManager().injectIgnore(target, key, config);
+    return (target, key, des) => ServiceManager_1.ServiceManager.injectIgnore(target, key, config);
 }
 exports.Ignore = Ignore;
 function Injectable(config) {

@@ -1,7 +1,7 @@
 import React, { memo } from "react";
 import { Link } from "react-router-dom";
-import { RxService, useService } from "../src";
-import { AppService } from "./service";
+import { RxService, useService } from "../../src";
+import { AppService } from "../service";
 
 export default memo(() => {
   const [as] = useService(AppService);
@@ -28,10 +28,16 @@ export default memo(() => {
                 {as.as2.i}
               </button>
             </p>
-            <br />
-            <Link to="/about">
-              <button className="to-about-page-btn">about</button>
-            </Link>
+            <p>
+              <Link to="/about">
+                <button className="to-about-page-btn">to about page</button>
+              </Link>
+            </p>
+            <p>
+              <Link to="/todos">
+                <button className="to-todos-page-btn">to todos page</button>
+              </Link>
+            </p>
           </div>
         );
       }}

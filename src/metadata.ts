@@ -9,7 +9,7 @@ import { ServiceManager } from "./ServiceManager";
  */
 export function Late(sid: string) {
   return (target: any, key: PropertyKey, des?: PropertyDescriptor) =>
-    new ServiceManager().injectLate(target, key, sid);
+    ServiceManager.injectLate(target, key, sid);
 }
 
 /**
@@ -17,7 +17,7 @@ export function Late(sid: string) {
  */
 export function Ignore(config?: IgnoreConfig_t) {
   return (target: any, key: PropertyKey, des?: PropertyDescriptor) =>
-    new ServiceManager().injectIgnore(target, key, config);
+    ServiceManager.injectIgnore(target, key, config);
 }
 
 /**

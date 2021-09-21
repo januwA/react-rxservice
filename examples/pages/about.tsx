@@ -1,7 +1,7 @@
 import React, { memo } from "react";
 import { Link } from "react-router-dom";
-import { Injectable, RxService, useService, ServiceProxy } from "../src";
-import { AppService } from "./service";
+import { Injectable, RxService, useService, ServiceProxy } from "../../src";
+import { AppService } from "../service";
 
 @Injectable({ global: false, autoIgnore: true })
 class PS implements ServiceProxy {
