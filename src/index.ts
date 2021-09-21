@@ -3,3 +3,4 @@ export { useService } from "./useService";
 export { Injectable, Ignore, Late } from "./metadata";
 export { ServiceManager } from "./ServiceManager";
 export { OnCreate, OnUpdate, OnDestroy, ServiceProxy } from "./interface";
+export { RFLAG } from "./const";

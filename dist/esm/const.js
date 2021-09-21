@@ -6,9 +6,9 @@ exports.SERVICE_LATE = "__AJANUW_RXSERVICE_LATE__";
 exports.SERVICE_CONFIG = "__AJANUW_RXSERVICE_CONFIG__";
 exports.DEBOUNCE_TIME = 10;
 exports.RFLAG = {
-    INIT: 1,
+    NINIT: 1,
     EXIST: 1 << 1,
     ACTIVE: 1 << 2,
-    DESTORY: 1 << 3,
+    DESTROY: 1 << 3,
     KEEP: 1 << 4,
 };

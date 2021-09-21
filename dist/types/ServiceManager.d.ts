@@ -6,6 +6,7 @@ export declare class ServiceManager {
     static isService(proxy: ServiceProxy): any;
     static injectIgnore(t: any, key: any, config?: IgnoreConfig_t): void;
     static injectLate(t: any, key: any, sid: string): void;
+    getServiceFlag(t: Target_t): number;
     private gServiceList;
     GLOBAL_SERVICE$: BehaviorSubject<RxServiceSubject[]>;
     private SERVICE_LATE_TABLE;

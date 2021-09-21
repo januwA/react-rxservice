@@ -3,7 +3,11 @@ export const SERVICE_LATE = "__AJANUW_RXSERVICE_LATE__";
 export const SERVICE_CONFIG = "__AJANUW_RXSERVICE_CONFIG__";
 export const DEBOUNCE_TIME = 10;
 export const RFLAG = {
-  INIT: 1,
+
+  /**
+   * 还未在池中初始化
+   */
+  NINIT: 1,
 
   /**
    * 在池中已经存在
@@ -18,7 +22,7 @@ export const RFLAG = {
   /**
    * 销毁状态
    */
-  DESTORY: 1 << 3,
+  DESTROY: 1 << 3,
 
   /**
    * 保持数据

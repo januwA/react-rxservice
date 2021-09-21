@@ -40,6 +40,26 @@ export class ServiceManager {
     t.constructor[SERVICE_LATE][key] = sid;
   }
 
+  getServiceFlag(t: Target_t) {
+    let flags = RFLAG.NINIT;
+
+    if (this.TARGET_ID_MAP.has(t)) {
+      flags ^= RFLAG.NINIT;
+      flags |= RFLAG.EXIST | RFLAG.ACTIVE;
+
+      const id = this.TARGET_ID_MAP.get(t);
+      const cacheService = this.SERVICE_POND[id!] as ServiceCache;
+
+      if (cacheService.isDestory) {
+        flags ^= RFLAG.ACTIVE;
+        flags |= RFLAG.DESTROY;
+        if (cacheService.isKeep) flags |= RFLAG.KEEP;
+      }
+    }
+
+    return flags;
+  }
+
   private gServiceList!: RxServiceSubject[];
   GLOBAL_SERVICE$!: BehaviorSubject<RxServiceSubject[]>;
   private SERVICE_LATE_TABLE!: {
@@ -133,21 +153,12 @@ export class ServiceManager {
    * 注册服务
    */
   register(t: Target_t<any>): ServiceCache {
-    let flags = RFLAG.INIT;
+    const flags = this.getServiceFlag(t);
 
-    // set flags
     let cacheService: ServiceCache | undefined;
-    if (this.TARGET_ID_MAP.has(t)) {
-      flags |= RFLAG.EXIST;
+    if (flags & RFLAG.EXIST) {
       const id = this.TARGET_ID_MAP.get(t);
       cacheService = this.SERVICE_POND[id!] as ServiceCache;
-
-      if (cacheService.isDestory) {
-        flags |= RFLAG.DESTORY;
-        if (cacheService.isKeep) flags |= RFLAG.KEEP;
-      } else {
-        flags |= RFLAG.ACTIVE;
-      }
     }
 
     if (flags & RFLAG.ACTIVE) return cacheService!;
@@ -188,7 +199,7 @@ export class ServiceManager {
       return service;
     };
 
-    if (flags & RFLAG.DESTORY) {
+    if (flags & RFLAG.DESTROY) {
       if (config.global) throw `ReactRxService: Don't destroy global services!`;
 
       cacheService!.isDestory = false;

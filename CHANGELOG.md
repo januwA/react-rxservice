@@ -1,3 +1,7 @@
+## 1.1.0 [2021-9-21]
+
+- ✨ Use `new ServiceManager().getServiceFlag(PS)` to get the service status
+
 ## 1.0.7 [2021-9-21]
 
 - ✅ add todos test

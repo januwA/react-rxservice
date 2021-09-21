@@ -32,6 +32,22 @@ class ServiceManager {
         (_a = (_b = t.constructor)[const_1.SERVICE_LATE]) !== null && _a !== void 0 ? _a : (_b[const_1.SERVICE_LATE] = {});
         t.constructor[const_1.SERVICE_LATE][key] = sid;
     }
+    getServiceFlag(t) {
+        let flags = const_1.RFLAG.NINIT;
+        if (this.TARGET_ID_MAP.has(t)) {
+            flags ^= const_1.RFLAG.NINIT;
+            flags |= const_1.RFLAG.EXIST | const_1.RFLAG.ACTIVE;
+            const id = this.TARGET_ID_MAP.get(t);
+            const cacheService = this.SERVICE_POND[id];
+            if (cacheService.isDestory) {
+                flags ^= const_1.RFLAG.ACTIVE;
+                flags |= const_1.RFLAG.DESTROY;
+                if (cacheService.isKeep)
+                    flags |= const_1.RFLAG.KEEP;
+            }
+        }
+        return flags;
+    }
     setLate(t, proxy) {
         var _a;
         var _b;
@@ -82,21 +98,11 @@ class ServiceManager {
     }
     register(t) {
         var _a, _b;
-        let flags = const_1.RFLAG.INIT;
+        const flags = this.getServiceFlag(t);
         let cacheService;
-        if (this.TARGET_ID_MAP.has(t)) {
-            flags |= const_1.RFLAG.EXIST;
+        if (flags & const_1.RFLAG.EXIST) {
             const id = this.TARGET_ID_MAP.get(t);
             cacheService = this.SERVICE_POND[id];
-            if (cacheService.isDestory) {
-                flags |= const_1.RFLAG.DESTORY;
-                if (cacheService.isKeep) {
-                    flags |= const_1.RFLAG.KEEP;
-                }
-            }
-            else {
-                flags |= const_1.RFLAG.ACTIVE;
-            }
         }
         if (flags & const_1.RFLAG.ACTIVE)
             return cacheService;
@@ -126,7 +132,7 @@ class ServiceManager {
             (_c = (_b = service.proxy).OnCreate) === null || _c === void 0 ? void 0 : _c.call(_b);
             return service;
         };
-        if (flags & const_1.RFLAG.DESTORY) {
+        if (flags & const_1.RFLAG.DESTROY) {
             if (config.global)
                 throw `ReactRxService: Don't destroy global services!`;
             cacheService.isDestory = false;
