@@ -24,11 +24,13 @@ export class ServiceManager {
 
   static isService(proxy: ServiceProxy) {
     if (!proxy) return false;
-    return Object.getPrototypeOf(proxy).constructor[SERVICE_CONFIG];
+    const proto = Object.getPrototypeOf(proxy);
+    if (!proto || !proto.constructor) return false;
+    return proto.constructor[SERVICE_CONFIG];
   }
 
   static injectIgnore(t: any, key: any, config?: IgnoreConfig_t) {
-    t.constructor[SERVICE_IGNORES] ??= {};
+    t.constructor[SERVICE_IGNORES] ??= Object.create(null);
     t.constructor[SERVICE_IGNORES][key] = Object.assign(
       { init: true, get: true, set: true },
       config
@@ -36,7 +38,7 @@ export class ServiceManager {
   }
 
   static injectLate(t: any, key: any, sid: string) {
-    t.constructor[SERVICE_LATE] ??= {};
+    t.constructor[SERVICE_LATE] ??= Object.create(null);
     t.constructor[SERVICE_LATE][key] = sid;
   }
 
@@ -48,7 +50,7 @@ export class ServiceManager {
       flags |= RFLAG.EXIST | RFLAG.ACTIVE;
 
       const id = this.TARGET_ID_MAP.get(t);
-      const cacheService = this.SERVICE_POND[id!] as ServiceCache;
+      const cacheService = this.SERVICE_TABLE[id!] as ServiceCache;
 
       if (cacheService.isDestory) {
         flags ^= RFLAG.ACTIVE;
@@ -73,7 +75,7 @@ export class ServiceManager {
    * 使用Target映射service id
    */
   TARGET_ID_MAP!: WeakMap<Target_t<any>, string>;
-  SERVICE_POND!: {
+  SERVICE_TABLE!: {
     [id: string]: ServiceCache;
   };
 
@@ -82,9 +84,9 @@ export class ServiceManager {
 
     this.gServiceList = [];
     this.GLOBAL_SERVICE$ = new BehaviorSubject<RxServiceSubject[]>([]);
-    this.SERVICE_LATE_TABLE = {};
+    this.SERVICE_LATE_TABLE = Object.create(null);
     this.TARGET_ID_MAP = new WeakMap<Target_t<any>, string>();
-    this.SERVICE_POND = {};
+    this.SERVICE_TABLE = Object.create(null);
     return (ServiceManager.ins = this);
   }
 
@@ -105,9 +107,9 @@ export class ServiceManager {
     // 加入待初始化缓存
     for (const prop in lates) {
       const id = lates[prop];
-      if (id in this.SERVICE_POND) {
+      if (id in this.SERVICE_TABLE) {
         // 如果已经存在service直接初始化
-        proxy[prop] = this.SERVICE_POND[id].proxy;
+        proxy[prop] = this.SERVICE_TABLE[id].proxy;
       } else {
         // 加入带初始化序列缓存
         this.SERVICE_LATE_TABLE[id] ??= [];
@@ -146,7 +148,7 @@ export class ServiceManager {
         )
         .forEach((k) => ServiceManager.injectIgnore(t.prototype, k));
     }
-    return this.getMeta<ServiceIgnore_t>(t, SERVICE_IGNORES) ?? {};
+    return this.getMeta<ServiceIgnore_t>(t, SERVICE_IGNORES) ?? Object.create(null);
   }
 
   /**
@@ -158,7 +160,7 @@ export class ServiceManager {
     let cacheService: ServiceCache | undefined;
     if (flags & RFLAG.EXIST) {
       const id = this.TARGET_ID_MAP.get(t);
-      cacheService = this.SERVICE_POND[id!] as ServiceCache;
+      cacheService = this.SERVICE_TABLE[id!] as ServiceCache;
     }
 
     if (flags & RFLAG.ACTIVE) return cacheService!;
@@ -208,7 +210,7 @@ export class ServiceManager {
         return cacheService!.proxy.OnLink?.(), cacheService!;
 
       // 重置数据
-      return initProxy(this.SERVICE_POND[config.id]);
+      return initProxy(this.SERVICE_TABLE[config.id]);
     }
 
     if (flags & RFLAG.EXIST)
@@ -216,8 +218,7 @@ export class ServiceManager {
 
     const change$ = new BehaviorSubject<any>(undefined);
 
-    // 在池中初始化
-    const service = (this.SERVICE_POND[config.id] = {
+    const service = (this.SERVICE_TABLE[config.id] = {
       isDestory: false,
       isKeep: false,
       change$,
@@ -241,7 +242,7 @@ export class ServiceManager {
     const exist = this.TARGET_ID_MAP.has(t);
     if (!exist) throw "destroy error: not find id!";
     const id = this.TARGET_ID_MAP.get(t);
-    const cache = this.SERVICE_POND[id!];
+    const cache = this.SERVICE_TABLE[id!];
     cache.isKeep = cache.proxy?.OnDestroy?.() ?? false;
     cache.isDestory = true;
   }

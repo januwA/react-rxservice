@@ -5,12 +5,12 @@ export const DEBOUNCE_TIME = 10;
 export const RFLAG = {
 
   /**
-   * 还未在池中初始化
+   * 还未初始化
    */
   NINIT: 1,
 
   /**
-   * 在池中已经存在
+   * 已经初始化
    */
   EXIST: 1 << 1,
 

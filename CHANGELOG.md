@@ -1,3 +1,7 @@
+## 1.1.1 [2021-9-22]
+
+- 🐛 fix `isService` function
+
 ## 1.1.0 [2021-9-21]
 
 - ✨ Use `new ServiceManager().getServiceFlag(PS)` to get the service status

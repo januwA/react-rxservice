@@ -10,26 +10,29 @@ class ServiceManager {
             return ServiceManager.ins;
         this.gServiceList = [];
         this.GLOBAL_SERVICE$ = new rxjs_1.BehaviorSubject([]);
-        this.SERVICE_LATE_TABLE = {};
+        this.SERVICE_LATE_TABLE = Object.create(null);
         this.TARGET_ID_MAP = new WeakMap();
-        this.SERVICE_POND = {};
+        this.SERVICE_TABLE = Object.create(null);
         return (ServiceManager.ins = this);
     }
     static isService(proxy) {
         if (!proxy)
             return false;
-        return Object.getPrototypeOf(proxy).constructor[const_1.SERVICE_CONFIG];
+        const proto = Object.getPrototypeOf(proxy);
+        if (!proto || !proto.constructor)
+            return false;
+        return proto.constructor[const_1.SERVICE_CONFIG];
     }
     static injectIgnore(t, key, config) {
         var _a;
         var _b;
-        (_a = (_b = t.constructor)[const_1.SERVICE_IGNORES]) !== null && _a !== void 0 ? _a : (_b[const_1.SERVICE_IGNORES] = {});
+        (_a = (_b = t.constructor)[const_1.SERVICE_IGNORES]) !== null && _a !== void 0 ? _a : (_b[const_1.SERVICE_IGNORES] = Object.create(null));
         t.constructor[const_1.SERVICE_IGNORES][key] = Object.assign({ init: true, get: true, set: true }, config);
     }
     static injectLate(t, key, sid) {
         var _a;
         var _b;
-        (_a = (_b = t.constructor)[const_1.SERVICE_LATE]) !== null && _a !== void 0 ? _a : (_b[const_1.SERVICE_LATE] = {});
+        (_a = (_b = t.constructor)[const_1.SERVICE_LATE]) !== null && _a !== void 0 ? _a : (_b[const_1.SERVICE_LATE] = Object.create(null));
         t.constructor[const_1.SERVICE_LATE][key] = sid;
     }
     getServiceFlag(t) {
@@ -38,7 +41,7 @@ class ServiceManager {
             flags ^= const_1.RFLAG.NINIT;
             flags |= const_1.RFLAG.EXIST | const_1.RFLAG.ACTIVE;
             const id = this.TARGET_ID_MAP.get(t);
-            const cacheService = this.SERVICE_POND[id];
+            const cacheService = this.SERVICE_TABLE[id];
             if (cacheService.isDestory) {
                 flags ^= const_1.RFLAG.ACTIVE;
                 flags |= const_1.RFLAG.DESTROY;
@@ -62,8 +65,8 @@ class ServiceManager {
             return;
         for (const prop in lates) {
             const id = lates[prop];
-            if (id in this.SERVICE_POND) {
-                proxy[prop] = this.SERVICE_POND[id].proxy;
+            if (id in this.SERVICE_TABLE) {
+                proxy[prop] = this.SERVICE_TABLE[id].proxy;
             }
             else {
                 (_a = (_b = this.SERVICE_LATE_TABLE)[id]) !== null && _a !== void 0 ? _a : (_b[id] = []);
@@ -94,7 +97,7 @@ class ServiceManager {
                 .filter((k) => isRegexp ? config.autoIgnore.test(k) : k.endsWith("_"))
                 .forEach((k) => ServiceManager.injectIgnore(t.prototype, k));
         }
-        return (_a = this.getMeta(t, const_1.SERVICE_IGNORES)) !== null && _a !== void 0 ? _a : {};
+        return (_a = this.getMeta(t, const_1.SERVICE_IGNORES)) !== null && _a !== void 0 ? _a : Object.create(null);
     }
     register(t) {
         var _a, _b;
@@ -102,7 +105,7 @@ class ServiceManager {
         let cacheService;
         if (flags & const_1.RFLAG.EXIST) {
             const id = this.TARGET_ID_MAP.get(t);
-            cacheService = this.SERVICE_POND[id];
+            cacheService = this.SERVICE_TABLE[id];
         }
         if (flags & const_1.RFLAG.ACTIVE)
             return cacheService;
@@ -138,12 +141,12 @@ class ServiceManager {
             cacheService.isDestory = false;
             if (flags & const_1.RFLAG.KEEP)
                 return (_b = (_a = cacheService.proxy).OnLink) === null || _b === void 0 ? void 0 : _b.call(_a), cacheService;
-            return initProxy(this.SERVICE_POND[config.id]);
+            return initProxy(this.SERVICE_TABLE[config.id]);
         }
         if (flags & const_1.RFLAG.EXIST)
             throw "ReactRxService: Service has been initialized!";
         const change$ = new rxjs_1.BehaviorSubject(undefined);
-        const service = (this.SERVICE_POND[config.id] = {
+        const service = (this.SERVICE_TABLE[config.id] = {
             isDestory: false,
             isKeep: false,
             change$,
@@ -163,7 +166,7 @@ class ServiceManager {
         if (!exist)
             throw "destroy error: not find id!";
         const id = this.TARGET_ID_MAP.get(t);
-        const cache = this.SERVICE_POND[id];
+        const cache = this.SERVICE_TABLE[id];
         cache.isKeep = (_c = (_b = (_a = cache.proxy) === null || _a === void 0 ? void 0 : _a.OnDestroy) === null || _b === void 0 ? void 0 : _b.call(_a)) !== null && _c !== void 0 ? _c : false;
         cache.isDestory = true;
     }

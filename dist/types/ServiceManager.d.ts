@@ -11,7 +11,7 @@ export declare class ServiceManager {
     GLOBAL_SERVICE$: BehaviorSubject<RxServiceSubject[]>;
     private SERVICE_LATE_TABLE;
     TARGET_ID_MAP: WeakMap<Target_t<any>, string>;
-    SERVICE_POND: {
+    SERVICE_TABLE: {
         [id: string]: ServiceCache;
     };
     constructor();
