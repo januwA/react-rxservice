@@ -1,4 +1,4 @@
-import { BehaviorSubject } from "rxjs";
+import { BehaviorSubject, Observable } from "rxjs";
 import { Target_t, ServiceCache, ServiceProxy, RxServiceSubject, IgnoreConfig_t } from "./interface";
 export declare class ServiceManager {
     static ID: number;
@@ -15,15 +15,21 @@ export declare class ServiceManager {
         [id: string]: ServiceCache;
     };
     constructor();
+    addGlobalService(subject: RxServiceSubject): void;
+    getSubjectsFormTargets(targets: Target_t[]): RxServiceSubject[];
+    filterGlobalService(targets: Target_t[]): Target_t<any>[];
+    filterLocalService(targets: Target_t[]): Target_t<any>[];
     private setLate;
     private getArgs;
     private initAutoIgnore;
     register(t: Target_t<any>): ServiceCache;
-    destroy(t: Target_t<any>): void;
+    destroy: (t: Target_t) => void;
+    destroyServices(targets: Target_t[]): void;
     getMeta<T = any>(t: Target_t<any>, key: string): T;
     setMeta<T = any>(t: Target_t<any>, key: string, value: T): T;
     isGlobal(t: Target_t<any>): boolean | undefined;
     getService(t: Target_t<any>): ServiceCache;
     private setStaticInstance;
+    subscribeServiceStream(stream: Observable<any[]>, next: () => any): import("rxjs").Subscription;
 }
 //# sourceMappingURL=ServiceManager.d.ts.map

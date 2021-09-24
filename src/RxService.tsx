@@ -1,21 +1,16 @@
 import { useEffect, FC, useState, ReactNode } from "react";
 import {
   combineLatest,
-  debounceTime,
   distinct,
   map,
-  mapTo,
-  Observable,
   of,
   pipe,
-  skip,
   Subject,
   Subscription,
   takeUntil,
   tap,
 } from "rxjs";
-import { ServiceManager } from ".";
-import { DEBOUNCE_TIME } from "./const";
+import { ServiceManager } from "./ServiceManager";
 import { Target_t } from "./interface";
 
 /**
@@ -41,13 +36,14 @@ export const RxService: FC<{
     const destroy$ = new Subject<boolean>();
     let sub: Subscription | undefined;
 
-    const sSubject = [...new Set(services.map((t) => m.getService(t).change$))];
+    const sSubject = m.getSubjectsFormTargets(services);
 
     const _sharedPipe = pipe(
       tap(() => sub?.unsubscribe()),
       takeUntil(destroy$)
     );
-    const obs = global
+
+    (global
       ? m.GLOBAL_SERVICE$.pipe(
           distinct(),
           map((gSubject) => combineLatest(gSubject.concat(sSubject))),
@@ -56,23 +52,16 @@ export const RxService: FC<{
       : of(sSubject).pipe(
           map((sSubject) => combineLatest(sSubject)),
           _sharedPipe
-        );
-
-    obs.subscribe((stream: any) => {
-      sub = (stream as Observable<any[]>)
-        .pipe(pipe(skip(1), mapTo(undefined), debounceTime(DEBOUNCE_TIME)))
-        .subscribe(() => inc((c) => c + 1));
+        )
+    ).subscribe((stream: any) => {
+      sub = m.subscribeServiceStream(stream, () => inc((c) => c + 1));
     });
 
     return () => {
       destroy$.next(true);
       destroy$.unsubscribe();
       sub?.unsubscribe();
-
-      // 销毁非全局服务
-      [...new Set(services)]
-        .filter((t) => !m.isGlobal(t))
-        .forEach((t) => m.destroy(t));
+      m.destroyServices(services);
     };
   }, []);
 

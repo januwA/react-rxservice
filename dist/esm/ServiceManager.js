@@ -6,6 +6,16 @@ const const_1 = require("./const");
 const observable_1 = require("./observable");
 class ServiceManager {
     constructor() {
+        this.destroy = (t) => {
+            var _a, _b, _c;
+            const exist = this.TARGET_ID_MAP.has(t);
+            if (!exist)
+                throw "destroy error: not find id!";
+            const id = this.TARGET_ID_MAP.get(t);
+            const cache = this.SERVICE_TABLE[id];
+            cache.isKeep = (_c = (_b = (_a = cache.proxy) === null || _a === void 0 ? void 0 : _a.OnDestroy) === null || _b === void 0 ? void 0 : _b.call(_a)) !== null && _c !== void 0 ? _c : false;
+            cache.isDestory = true;
+        };
         if (ServiceManager.ins)
             return ServiceManager.ins;
         this.gServiceList = [];
@@ -50,6 +60,19 @@ class ServiceManager {
             }
         }
         return flags;
+    }
+    addGlobalService(subject) {
+        this.gServiceList = [...new Set([...this.gServiceList, subject])];
+        this.GLOBAL_SERVICE$.next(this.gServiceList);
+    }
+    getSubjectsFormTargets(targets) {
+        return [...new Set(targets.map((t) => this.getService(t).change$))];
+    }
+    filterGlobalService(targets) {
+        return [...new Set(targets)].filter((t) => !this.isGlobal(t));
+    }
+    filterLocalService(targets) {
+        return [...new Set(targets)].filter((t) => this.isGlobal(t));
     }
     setLate(t, proxy) {
         var _a;
@@ -97,7 +120,7 @@ class ServiceManager {
                 .filter((k) => isRegexp ? config.autoIgnore.test(k) : k.endsWith("_"))
                 .forEach((k) => ServiceManager.injectIgnore(t.prototype, k));
         }
-        return (_a = this.getMeta(t, const_1.SERVICE_IGNORES)) !== null && _a !== void 0 ? _a : Object.create(null);
+        return ((_a = this.getMeta(t, const_1.SERVICE_IGNORES)) !== null && _a !== void 0 ? _a : Object.create(null));
     }
     register(t) {
         var _a, _b;
@@ -126,12 +149,8 @@ class ServiceManager {
             if ((_a = config === null || config === void 0 ? void 0 : config.staticInstance) === null || _a === void 0 ? void 0 : _a.trim()) {
                 this.setStaticInstance(t, config.staticInstance, service);
             }
-            if (config.global) {
-                this.gServiceList = [
-                    ...new Set([...this.gServiceList, service.change$]),
-                ];
-                this.GLOBAL_SERVICE$.next(this.gServiceList);
-            }
+            if (config.global)
+                this.addGlobalService(service.change$);
             (_c = (_b = service.proxy).OnCreate) === null || _c === void 0 ? void 0 : _c.call(_b);
             return service;
         };
@@ -160,15 +179,8 @@ class ServiceManager {
         });
         return initProxy(service);
     }
-    destroy(t) {
-        var _a, _b, _c;
-        const exist = this.TARGET_ID_MAP.has(t);
-        if (!exist)
-            throw "destroy error: not find id!";
-        const id = this.TARGET_ID_MAP.get(t);
-        const cache = this.SERVICE_TABLE[id];
-        cache.isKeep = (_c = (_b = (_a = cache.proxy) === null || _a === void 0 ? void 0 : _a.OnDestroy) === null || _b === void 0 ? void 0 : _b.call(_a)) !== null && _c !== void 0 ? _c : false;
-        cache.isDestory = true;
+    destroyServices(targets) {
+        this.filterGlobalService(targets).forEach(this.destroy);
     }
     getMeta(t, key) {
         return t.prototype.constructor[key];
@@ -186,6 +198,11 @@ class ServiceManager {
     setStaticInstance(t, key, service) {
         this.setMeta(t, key, service.proxy);
         this.setMeta(t, "_" + key, service.instance);
+    }
+    subscribeServiceStream(stream, next) {
+        return stream
+            .pipe((0, rxjs_1.skip)(1), (0, rxjs_1.mapTo)(undefined), (0, rxjs_1.debounceTime)(const_1.DEBOUNCE_TIME))
+            .subscribe(next);
     }
 }
 exports.ServiceManager = ServiceManager;

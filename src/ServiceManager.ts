@@ -1,4 +1,4 @@
-import { BehaviorSubject, debounceTime } from "rxjs";
+import { BehaviorSubject, debounceTime, mapTo, Observable, skip } from "rxjs";
 import {
   SERVICE_IGNORES,
   SERVICE_LATE,
@@ -90,6 +90,23 @@ export class ServiceManager {
     return (ServiceManager.ins = this);
   }
 
+  addGlobalService(subject: RxServiceSubject) {
+    this.gServiceList = [...new Set([...this.gServiceList, subject])];
+    this.GLOBAL_SERVICE$.next(this.gServiceList);
+  }
+
+  getSubjectsFormTargets(targets: Target_t[]): RxServiceSubject[] {
+    return [...new Set(targets.map((t) => this.getService(t).change$))];
+  }
+
+  filterGlobalService(targets: Target_t[]) {
+    return [...new Set(targets)].filter((t) => !this.isGlobal(t));
+  }
+
+  filterLocalService(targets: Target_t[]) {
+    return [...new Set(targets)].filter((t) => this.isGlobal(t));
+  }
+
   /**
    * 处理装饰器 @Late
    */
@@ -148,7 +165,9 @@ export class ServiceManager {
         )
         .forEach((k) => ServiceManager.injectIgnore(t.prototype, k));
     }
-    return this.getMeta<ServiceIgnore_t>(t, SERVICE_IGNORES) ?? Object.create(null);
+    return (
+      this.getMeta<ServiceIgnore_t>(t, SERVICE_IGNORES) ?? Object.create(null)
+    );
   }
 
   /**
@@ -190,12 +209,7 @@ export class ServiceManager {
       }
 
       // 通知全局服务订阅者
-      if (config.global) {
-        this.gServiceList = [
-          ...new Set([...this.gServiceList, service.change$]),
-        ];
-        this.GLOBAL_SERVICE$.next(this.gServiceList);
-      }
+      if (config.global) this.addGlobalService(service.change$);
 
       service.proxy.OnCreate?.();
       return service;
@@ -238,13 +252,20 @@ export class ServiceManager {
   /**
    * ! 不要销毁全局服务
    */
-  destroy(t: Target_t<any>) {
+  destroy = (t: Target_t) => {
     const exist = this.TARGET_ID_MAP.has(t);
     if (!exist) throw "destroy error: not find id!";
     const id = this.TARGET_ID_MAP.get(t);
     const cache = this.SERVICE_TABLE[id!];
     cache.isKeep = cache.proxy?.OnDestroy?.() ?? false;
     cache.isDestory = true;
+  };
+
+  /**
+   * 销毁非全局服务
+   */
+  destroyServices(targets: Target_t[]) {
+    this.filterGlobalService(targets).forEach(this.destroy);
   }
 
   getMeta<T = any>(t: Target_t<any>, key: string) {
@@ -267,5 +288,11 @@ export class ServiceManager {
   private setStaticInstance(t: Target_t, key: string, service: ServiceCache) {
     this.setMeta(t, key, service.proxy);
     this.setMeta(t, "_" + key, service.instance);
+  }
+
+  subscribeServiceStream(stream: Observable<any[]>, next: () => any) {
+    return stream
+      .pipe(skip(1), mapTo(undefined), debounceTime(DEBOUNCE_TIME))
+      .subscribe(next);
   }
 }

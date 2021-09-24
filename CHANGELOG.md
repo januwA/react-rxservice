@@ -1,3 +1,7 @@
+## 1.2.0 [2021-9-24]
+
+- ⚡ Optimize the code
+
 ## 1.1.2 [2021-9-24]
 
 - 📚 update readme
