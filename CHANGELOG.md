@@ -1,3 +1,7 @@
+## 1.1.2 [2021-9-24]
+
+- 📚 update readme
+
 ## 1.1.1 [2021-9-22]
 
 - 🐛 fix `isService` function
