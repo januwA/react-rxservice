@@ -19,16 +19,6 @@ const options: webpackDevServer.Configuration = {
       errors: true,
     },
   },
-
-  // 现在有个 /api/test 的请求会将请求代理到 http://localhost:3000/api/test
-  // https://webpack.js.org/configuration/dev-server/#devserverproxy
-  proxy: {
-    "/api": {
-      target: "http://localhost:3000",
-      secure: false,
-      changeOrigin: true,
-    },
-  },
 };
 
 const compiler = webpack(webpackConfig);

@@ -1,11 +1,12 @@
 import assert from "assert";
+import os from "os";
 import pptr from "puppeteer";
 const gotoUrl = "http://localhost:8888/";
 
 (async () => {
   const browser = await pptr.launch({
-    headless: false,
-
+    headless: os.platform() === "linux",
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
     // 不能小于 10
     slowMo: 20,
   });

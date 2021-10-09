@@ -1,8 +1,10 @@
 import { ServiceManager } from "./ServiceManager";
 import { ServiceIgnore_t } from "./interface";
 
-function isLikeObject(value: any): boolean {
-  return typeof value === "object" && value !== null;
+function canProxy(obj: any): boolean {
+  if (ServiceManager.isService(obj)) return false;
+
+  return Array.isArray(obj) || Object.prototype.toString.call(obj) === '[object Object]';
 }
 
 function getOwnPropertyDescriptor(
@@ -20,37 +22,38 @@ export function observable(
   changed?: () => void,
   ignores: ServiceIgnore_t = Object.create(null)
 ) {
-  // 跳过非object对象
-  // 跳过代理过的service
-  if (!isLikeObject(obj)) return obj;
-  if (ServiceManager.isService(obj)) return obj;
+  if (!canProxy(obj)) return obj;
 
   for (const key in obj) {
     if (key in ignores && ignores[key].init) continue;
-    const value = obj[key];
-    obj[key] = observable(value, changed);
+    const value = Reflect.get(obj, key);
+    if (canProxy(value)) {
+      Reflect.set(obj, key, observable(value, changed))
+    }
   }
 
   const proxy: any = new Proxy(obj, {
-    get(target: any, key: any) {
-      if (key in ignores && ignores[key].get) return target[key];
+    get(t: any, k: any) {
+      if (k in ignores && ignores[k].get) return Reflect.get(t, k);
 
-      const des = getOwnPropertyDescriptor(target, key);
+      const des = getOwnPropertyDescriptor(t, k);
       if (des?.value && typeof des.value === "function") {
         return des.value.bind(proxy);
       }
 
       if (des?.get) return des.get.call(proxy);
-      return target[key];
+      return Reflect.get(t, k);
     },
-    set(target: any, key: any, value: any) {
-      if (key in ignores && ignores[key].set)
-        return (target[key] = value), true;
+    set(t: any, k: any, v: any) {
+      if (Reflect.get(t, k) === v) return false;
 
-      const des = getOwnPropertyDescriptor(target, key);
-      value = observable(value, changed);
-      if (des?.set) des.set.call(proxy, value);
-      else target[key] = value;
+      if (k in ignores && ignores[k].set)
+        return Reflect.set(t, k, v), true;
+
+      const des = getOwnPropertyDescriptor(t, k);
+      v = observable(v, changed);
+      if (des?.set) des.set.call(proxy, v);
+      else Reflect.set(t, k, v);
       changed?.();
       return true;
     },

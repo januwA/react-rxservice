@@ -1,1 +1,1 @@
-{"version":3,"file":"observable.d.ts","sourceRoot":"","sources":["../../src/observable.ts"],"names":[],"mappings":"AACA,OAAO,EAAE,eAAe,EAAE,MAAM,aAAa,CAAC;AAgB9C,wBAAgB,UAAU,CACxB,GAAG,EAAE,GAAG,EACR,OAAO,CAAC,EAAE,MAAM,IAAI,EACpB,OAAO,GAAE,eAAqC,OAuC/C"}
+{"version":3,"file":"observable.d.ts","sourceRoot":"","sources":["../../src/observable.ts"],"names":[],"mappings":"AACA,OAAO,EAAE,eAAe,EAAE,MAAM,aAAa,CAAC;AAkB9C,wBAAgB,UAAU,CACxB,GAAG,EAAE,GAAG,EACR,OAAO,CAAC,EAAE,MAAM,IAAI,EACpB,OAAO,GAAE,eAAqC,OAwC/C"}

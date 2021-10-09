@@ -1,3 +1,7 @@
+## 1.3.0 [2021-10-8]
+
+- ✨ Use `===` to judge that the same value will not trigger `change`
+
 ## 1.2.0 [2021-9-24]
 
 - ⚡ Optimize the code
