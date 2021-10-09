@@ -3,7 +3,6 @@ import { BehaviorSubject } from "rxjs";
 export type Target_t<T = any> = new (...args: any[]) => T;
 
 export type IgnoreConfig_t = {
-  init?: boolean;
   get?: boolean;
   set?: boolean;
 };

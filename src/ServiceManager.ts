@@ -32,7 +32,7 @@ export class ServiceManager {
   static injectIgnore(t: any, key: any, config?: IgnoreConfig_t) {
     t.constructor[SERVICE_IGNORES] ??= Object.create(null);
     t.constructor[SERVICE_IGNORES][key] = Object.assign(
-      { init: true, get: true, set: true },
+      { get: true, set: true },
       config
     );
   }

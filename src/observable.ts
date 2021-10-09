@@ -1,10 +1,19 @@
 import { ServiceManager } from "./ServiceManager";
 import { ServiceIgnore_t } from "./interface";
 
+const isProxyData = Symbol('__proxy__')
+
 function canProxy(obj: any): boolean {
   if (ServiceManager.isService(obj)) return false;
 
-  return Array.isArray(obj) || Object.prototype.toString.call(obj) === '[object Object]';
+  const t = Object.prototype.toString.call(obj);
+  const types = ['[object Object]']
+  if (Array.isArray(obj) || types.includes(t)) {
+    if (Reflect.get(obj, isProxyData)) return false;
+
+    return true
+  }
+  return false;
 }
 
 function getOwnPropertyDescriptor(
@@ -17,20 +26,13 @@ function getOwnPropertyDescriptor(
   return getOwnPropertyDescriptor(Object.getPrototypeOf(target), key);
 }
 
+
 export function observable(
   obj: any,
   changed?: () => void,
   ignores: ServiceIgnore_t = Object.create(null)
 ) {
   if (!canProxy(obj)) return obj;
-
-  for (const key in obj) {
-    if (key in ignores && ignores[key].init) continue;
-    const value = Reflect.get(obj, key);
-    if (canProxy(value)) {
-      Reflect.set(obj, key, observable(value, changed))
-    }
-  }
 
   const proxy: any = new Proxy(obj, {
     get(t: any, k: any) {
@@ -41,11 +43,18 @@ export function observable(
         return des.value.bind(proxy);
       }
 
-      if (des?.get) return des.get.call(proxy);
-      return Reflect.get(t, k);
+      let val = des?.get ? des.get.call(proxy) : Reflect.get(t, k);
+
+      if (canProxy(val)) {
+        const proxyVal = observable(val, changed)
+        Reflect.set(val, isProxyData, true)
+        Reflect.set(t, k, proxyVal)
+        val = proxyVal;
+      }
+      return val;
     },
     set(t: any, k: any, v: any) {
-      if (Reflect.get(t, k) === v) return false;
+      if (Reflect.get(t, k) === v) return true;
 
       if (k in ignores && ignores[k].set)
         return Reflect.set(t, k, v), true;
