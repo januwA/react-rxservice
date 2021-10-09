@@ -4,6 +4,7 @@ import { BrowserRouter, Switch, Route } from "react-router-dom";
 import App from "./pages/app";
 import About from "./pages/about";
 import Todos from "./pages/todos";
+import TestPage from "./pages/test";
 
 ReactDOM.render(
   <BrowserRouter>
@@ -18,6 +19,10 @@ ReactDOM.render(
 
       <Route exact path="/todos">
         <Todos />
+      </Route>
+
+      <Route exact path="/test">
+        <TestPage />
       </Route>
     </Switch>
   </BrowserRouter>,

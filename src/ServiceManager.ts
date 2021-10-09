@@ -20,6 +20,17 @@ import { observable } from "./observable";
 
 export class ServiceManager {
   static ID = 0;
+
+  /**
+ * 为true时，所有服务的变更都不会通知订阅者
+ */
+  private _noreact = false;
+  noreact(cb: Function) {
+    this._noreact = true;
+    cb();
+    this._noreact = false;
+  }
+
   private static ins: ServiceManager;
 
   static isService(proxy: ServiceProxy) {
@@ -194,7 +205,7 @@ export class ServiceManager {
       service.proxy = observable(
         service.instance,
         () => {
-          if (service.isDestory) return;
+          if (service.isDestory || this._noreact) return;
           service.change$?.next(undefined);
         },
         ignores
@@ -287,7 +298,6 @@ export class ServiceManager {
 
   private setStaticInstance(t: Target_t, key: string, service: ServiceCache) {
     this.setMeta(t, key, service.proxy);
-    this.setMeta(t, "_" + key, service.instance);
   }
 
   subscribeServiceStream(stream: Observable<any[]>, next: () => any) {
@@ -295,4 +305,12 @@ export class ServiceManager {
       .pipe(skip(1), mapTo(undefined), debounceTime(DEBOUNCE_TIME))
       .subscribe(next);
   }
+}
+
+/**
+ * 在改变数据时，不想刷新ui
+ * @param cb - 同步函数
+ */
+export function noreact(cb: Function) {
+  return new ServiceManager().noreact(cb)
 }

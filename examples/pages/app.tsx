@@ -38,6 +38,12 @@ export default memo(() => {
                 <button className="to-todos-page-btn">to todos page</button>
               </Link>
             </p>
+
+            <p>
+              <Link to="/test">
+                <button className="to-test-page-btn">to test page</button>
+              </Link>
+            </p>
           </div>
         );
       }}

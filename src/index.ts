@@ -1,6 +1,6 @@
 export { RxService } from "./RxService";
 export { useService } from "./useService";
 export { Injectable, Ignore, Late } from "./metadata";
-export { ServiceManager } from "./ServiceManager";
+export { ServiceManager, noreact } from "./ServiceManager";
 export { OnCreate, OnUpdate, OnDestroy, ServiceProxy } from "./interface";
 export { RFLAG } from "./const";

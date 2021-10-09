@@ -154,7 +154,6 @@ export default memo(() => {
   @Injectable()
   class UserinfoService {
     static ins: UserinfoService;
-    static _ins: UserinfoService;
   }
 
   @Injectable()
@@ -164,8 +163,6 @@ export default memo(() => {
   }
   ```
    `UserinfoService.ins` 是代理后的单例(数据变更会通知订阅者)
-
-   `UserinfoService._ins` 是没有代理的单例(数据变更不会通知订阅者)
 
   3. 使用`@Late`装饰器
   ```ts

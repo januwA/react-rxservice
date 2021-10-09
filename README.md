@@ -154,7 +154,6 @@ When `RxService` is destroyed, all local services in `services` will also be des
   @Injectable()
   class UserinfoService {
     static ins: UserinfoService;
-    static _ins: UserinfoService;
   }
 
   @Injectable()
@@ -164,8 +163,6 @@ When `RxService` is destroyed, all local services in `services` will also be des
   }
   ```
    `UserinfoService.ins` It is a singleton after proxy (subscribers will be notified of data changes)
-
-   `UserinfoService._ins` It is a singleton without a proxy (subscribers will not be notified of data changes)
 
   3. Use `@Late` decorator
   ```ts
