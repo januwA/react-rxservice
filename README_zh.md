@@ -162,7 +162,6 @@ export default memo(() => {
     i = 0;
   }
   ```
-   `UserinfoService.ins` 是代理后的单例(数据变更会通知订阅者)
 
   3. 使用`@Late`装饰器
   ```ts
@@ -210,7 +209,8 @@ export default memo(() => {
   });
   ```
 
-  5. 使用上一次销毁的数据?
+### 使用上一次销毁的数据?
+
   ```ts
   @Injectable({ global: false })
   class PS implements ServiceProxy {
@@ -223,10 +223,42 @@ export default memo(() => {
 
   如果在页面销毁时`i=10`，并且在`OnDestroy`钩子中返回`true`，那么下次重启这个服务时，数据不会被初始化而是继续使用上一次的数据，再次进入页面你会直接看到`i=10`而不是`i=0`
 
-**服务从第一次创建就一直存在于内存中,销毁只是一个状态,在销毁状态下所有的变更都不会通知订阅者**
+  **服务从第一次创建就一直存在于内存中,销毁只是一个状态,在销毁状态下所有的变更都不会通知订阅者**
 
-**当再次启动销毁状态的服务时，只是取消了销毁状态，数据的初始化取决于上一次`OnDestroy`钩子的返回值，如果返回`true`将继续使用以前的数据，否则会重新初始化一个实例，并创建一个新的代理然后触发`OnCreate`钩子**
+  **当再次启动销毁状态的服务时，只是取消了销毁状态，数据的初始化取决于上一次`OnDestroy`钩子的返回值，如果返回`true`将继续使用以前的数据，否则会重新初始化一个实例，并创建一个新的代理然后触发`OnCreate`钩子**
 
+### 数据改变时，不通知订阅者
+
+  ```ts
+  @Injectable()
+  class PS {
+    i = 0;
+
+    add() {
+      noreact(() => {
+        this.i++
+      })
+    }
+  }
+  ```
+
+  在`noreact`的钩子函数中，改变数据时不会通知订阅者
+
+### 监听属性的变更
+
+```ts
+class PS {
+  i = 0;
+  obj = { i: 0 }
+
+  @Watch(['this.i', 'this.obj.i'])
+  watch_i(key: string, newVal: number, oldVal: number) {
+    console.log(key, newVal, oldVal);
+  }
+}
+```
+
+可以使用`Watch`装饰器，监听一个或多个属性的变更
 
 ## Run test
 ```sh

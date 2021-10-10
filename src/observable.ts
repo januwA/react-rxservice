@@ -29,7 +29,8 @@ function getOwnPropertyDescriptor(
 
 export function observable(
   obj: any,
-  changed?: () => void,
+  watchKey: string = 'this',
+  changed?: (watchKey: string, newValue: any, oldValue: any) => void,
   ignores: ServiceIgnore_t = Object.create(null)
 ) {
   if (!canProxy(obj)) return obj;
@@ -46,7 +47,8 @@ export function observable(
       let val = des?.get ? des.get.call(proxy) : Reflect.get(t, k);
 
       if (canProxy(val)) {
-        const proxyVal = observable(val, changed)
+        const _watchKey = `${watchKey}.${k}`;
+        const proxyVal = observable(val, _watchKey, changed)
         Reflect.set(val, isProxyData, true)
         Reflect.set(t, k, proxyVal)
         val = proxyVal;
@@ -54,16 +56,28 @@ export function observable(
       return val;
     },
     set(t: any, k: any, v: any) {
-      if (Reflect.get(t, k) === v) return true;
+      const oldValue = Reflect.get(t, k);
+      if (v === oldValue) return true;
 
-      if (k in ignores && ignores[k].set)
+      const isIgnoreTheKey = k in ignores && ignores[k].set;
+
+      if (isIgnoreTheKey)
         return Reflect.set(t, k, v), true;
 
+      const _watchKey = `${watchKey}.${k}`;
       const des = getOwnPropertyDescriptor(t, k);
-      v = observable(v, changed);
+
+      if (!isIgnoreTheKey) {
+        v = observable(v, _watchKey, changed);
+      }
+
       if (des?.set) des.set.call(proxy, v);
       else Reflect.set(t, k, v);
-      changed?.();
+
+      if (!isIgnoreTheKey) {
+        changed?.(_watchKey, v, oldValue);
+      }
+
       return true;
     },
   });

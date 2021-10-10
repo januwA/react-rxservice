@@ -1,10 +1,11 @@
-import { BehaviorSubject, debounceTime, mapTo, Observable, skip } from "rxjs";
+import { BehaviorSubject, debounceTime, mapTo, Observable, skip, Subject } from "rxjs";
 import {
   SERVICE_IGNORES,
   SERVICE_LATE,
   SERVICE_CONFIG,
   DEBOUNCE_TIME,
   RFLAG,
+  SERVICE_WATCH,
 } from "./const";
 import {
   Target_t,
@@ -51,6 +52,36 @@ export class ServiceManager {
   static injectLate(t: any, key: any, sid: string) {
     t.constructor[SERVICE_LATE] ??= Object.create(null);
     t.constructor[SERVICE_LATE][key] = sid;
+  }
+
+
+  static injectWatch(t: any, key: any, keys: string[]) {
+    const cb = t[key]
+    if (typeof cb !== 'function')
+      throw 'Watch decorator can only be used on functions'
+    t.constructor[SERVICE_WATCH] ??= Object.create(null);
+
+    keys = [...new Set(keys)]
+
+    for (const key of keys) {
+      if (t.constructor[SERVICE_WATCH][key]) {
+        t.constructor[SERVICE_WATCH][key].callbacks.push(cb);
+      } else {
+
+        const emit$ = new Subject();
+        emit$.pipe<any>(debounceTime(DEBOUNCE_TIME))
+          .subscribe(({ proxy, watchKey, newValue, oldValue }) => {
+            for (const cb of t.constructor[SERVICE_WATCH][key].callbacks) {
+              cb.call(proxy, watchKey, newValue, oldValue);
+            }
+          })
+
+        t.constructor[SERVICE_WATCH][key] = {
+          emit$,
+          callbacks: [cb]
+        }
+      }
+    }
   }
 
   getServiceFlag(t: Target_t) {
@@ -204,10 +235,19 @@ export class ServiceManager {
       this.setMeta(t, SERVICE_CONFIG, undefined);
       service.proxy = observable(
         service.instance,
-        () => {
-          if (service.isDestory || this._noreact) return;
-          service.change$?.next(undefined);
+        "this",
+        (watchKey, newValue, oldValue) => {
+          if (service.isDestory) return;
+
+          const watchObj = this.getMeta(t, SERVICE_WATCH)
+          if (watchObj && watchObj[watchKey]) {
+            watchObj[watchKey].emit$.next({ proxy: service.proxy, watchKey, newValue, oldValue });
+          }
+
+          if (!this._noreact) service.change$?.next(undefined);
         },
+
+
         ignores
       );
       this.setMeta(t, SERVICE_CONFIG, config);

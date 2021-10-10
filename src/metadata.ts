@@ -46,3 +46,10 @@ export function Injectable(config?: ServiceConfig_t) {
     if (config?.global) m.register(t);
   };
 }
+
+
+
+export function Watch(keys: string[]) {
+  return (target: any, key: PropertyKey, des?: PropertyDescriptor) =>
+    ServiceManager.injectWatch(target, key, keys);
+}

@@ -1,9 +1,13 @@
 import React, { memo } from "react";
-import { Injectable, RxService, useService, ServiceProxy, noreact } from "../../src";
+import { Injectable, RxService, useService, ServiceProxy, noreact, Watch } from "../../src";
 
 @Injectable({ global: false, autoIgnore: true })
 class PS implements ServiceProxy {
   i = 0;
+
+  obj = {
+    i: 0
+  }
 
   add() {
     this.i++
@@ -13,7 +17,14 @@ class PS implements ServiceProxy {
   add2() {
     noreact(() => {
       this.i++
+      this.obj.i++;
     })
+  }
+
+  @Watch(['this.i', 'this.obj.i'])
+  watch_i(key: string, newVal: number, oldVal: number) {
+    console.log(key, newVal, oldVal);
+
   }
 }
 
