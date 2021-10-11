@@ -11,7 +11,7 @@
     "esm": "tsc --project tsconfig.esm.json",
     "umd": "cross-env TS_NODE_PROJECT=config/webpack/tsconfig.json NODE_ENV=production webpack -c config/webpack/prod.config.ts",
     "build": "npm run umd && npm run esm",
-    "test": "ts-node test.ts"
+    "test": "ts-node  --project tsconfig.test.json test.ts"
   },
   "keywords": [
     "react-rxservice",

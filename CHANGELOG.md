@@ -1,6 +1,9 @@
-## 1.3.0 [2021-10-8]
+## 1.3.0 [2021-10-11]
 
 - ✨ Use `===` to judge that the same value will not trigger `change`
+- 🐤 对更多数据的支持
+- 🐤 更新 readme
+- 🐤 新增`noreact`函数
 
 ## 1.2.0 [2021-9-24]
 

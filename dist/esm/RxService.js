@@ -1,21 +1,18 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.RxService = void 0;
-const jsx_runtime_1 = require("react/jsx-runtime");
-const react_1 = require("react");
-const rxjs_1 = require("rxjs");
-const ServiceManager_1 = require("./ServiceManager");
-const RxService = ({ children, builder, services = [], global = true }) => {
-    const [updateCount, inc] = (0, react_1.useState)(0);
-    (0, react_1.useEffect)(() => {
-        const m = new ServiceManager_1.ServiceManager();
-        const destroy$ = new rxjs_1.Subject();
+import { Fragment as _Fragment, jsx as _jsx } from "react/jsx-runtime";
+import { useEffect, useState } from "react";
+import { combineLatest, distinct, map, of, pipe, Subject, takeUntil, tap, } from "rxjs";
+import { ServiceManager } from "./ServiceManager";
+export const RxService = ({ children, builder, services = [], global = true }) => {
+    const [updateCount, inc] = useState(0);
+    useEffect(() => {
+        const m = new ServiceManager();
+        const destroy$ = new Subject();
         let sub;
         const sSubject = m.getSubjectsFormTargets(services);
-        const _sharedPipe = (0, rxjs_1.pipe)((0, rxjs_1.tap)(() => sub === null || sub === void 0 ? void 0 : sub.unsubscribe()), (0, rxjs_1.takeUntil)(destroy$));
+        const _sharedPipe = pipe(tap(() => sub === null || sub === void 0 ? void 0 : sub.unsubscribe()), takeUntil(destroy$));
         (global
-            ? m.GLOBAL_SERVICE$.pipe((0, rxjs_1.distinct)(), (0, rxjs_1.map)((gSubject) => (0, rxjs_1.combineLatest)(gSubject.concat(sSubject))), _sharedPipe)
-            : (0, rxjs_1.of)(sSubject).pipe((0, rxjs_1.map)((sSubject) => (0, rxjs_1.combineLatest)(sSubject)), _sharedPipe)).subscribe((stream) => {
+            ? m.GLOBAL_SERVICE$.pipe(distinct(), map((gSubject) => combineLatest(gSubject.concat(sSubject))), _sharedPipe)
+            : of(sSubject).pipe(map((sSubject) => combineLatest(sSubject)), _sharedPipe)).subscribe((stream) => {
             sub = m.subscribeServiceStream(stream, () => inc((c) => c + 1));
         });
         return () => {
@@ -27,6 +24,5 @@ const RxService = ({ children, builder, services = [], global = true }) => {
     }, []);
     if (!builder && !children)
         throw "RxService need builder prop or children!";
-    return (0, jsx_runtime_1.jsx)(jsx_runtime_1.Fragment, { children: (builder !== null && builder !== void 0 ? builder : children)(updateCount) }, void 0);
+    return _jsx(_Fragment, { children: (builder !== null && builder !== void 0 ? builder : children)(updateCount) }, void 0);
 };
-exports.RxService = RxService;
