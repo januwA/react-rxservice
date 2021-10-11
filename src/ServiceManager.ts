@@ -347,10 +347,3 @@ export class ServiceManager {
   }
 }
 
-/**
- * 在改变数据时，不想刷新ui
- * @param cb - 同步函数
- */
-export function noreact(cb: Function) {
-  return new ServiceManager().noreact(cb)
-}

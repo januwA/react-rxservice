@@ -47,9 +47,28 @@ export function Injectable(config?: ServiceConfig_t) {
   };
 }
 
-
-
+/**
+ * 监听属性变更
+ */
 export function Watch(keys: string[]) {
   return (target: any, key: PropertyKey, des?: PropertyDescriptor) =>
     ServiceManager.injectWatch(target, key, keys);
+}
+
+/**
+ * 在改变数据时，不想刷新ui
+ */
+export function noreact(cb?: Function) {
+  if (cb && typeof cb === "function") {
+    new ServiceManager().noreact(cb);
+  }
+
+  return (target: any, key: PropertyKey, des?: PropertyDescriptor) => {
+    if (typeof des?.value === "function") {
+      const cb = des.value;
+      des.value = function () {
+        new ServiceManager().noreact(() => cb.apply(this, arguments));
+      };
+    }
+  };
 }

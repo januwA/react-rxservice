@@ -8,13 +8,13 @@ $ npm i ajanuw-react-rxservice
 $ npm i rxjs
 ```
 
-If you want to use `constructor` dependency injection
+如果你想使用`constructor`依赖注入
 
 ```sh
 $ npm i reflect-metadata
 ```
 
-Configuration `tsconfig.json`
+配置 `tsconfig.json`
 
 ```json
 {
@@ -25,9 +25,9 @@ Configuration `tsconfig.json`
 }
 ```
 
-## Global service
+## 全局服务
 
-### Create a global service
+### 创建全局服务
 ```ts
 @Injectable()
 class AppService {
@@ -35,9 +35,9 @@ class AppService {
 }
 ```
 
-`@Injectable` Register a global service immediately, monitor all properties, and notify subscribers when properties change
+`@Injectable` 立即注册一个全局服务，当数据变化时通知订阅者
 
-### Subscribe to global services
+### 订阅全局服务
 ```tsx
 export default memo(() => {
   const [as] = useService(AppService);
@@ -57,12 +57,12 @@ export default memo(() => {
 });
 ```
 
-`RxService` The component will automatically subscribe to the global service and trigger an update when the response is received
+`RxService` 组件会自动订阅全局服务，收到响应时触发更新
 
 
-## Local service (non-global service)
+## 局部服务(非全局服务)
 
-### Create a local service
+### 创建局部服务
 
 ```ts
 @Injectable({ global: false })
@@ -75,12 +75,12 @@ class PS implements ServiceProxy {
 }
 ```
 
-When using `Injectable`, you can pass in some configuration items, set `global` to `false` to register as a local service, and it will not be registered immediately
+使用`Injectable`时可以传入一些配置项，将`global`设置为`false`注册为局部服务，并且不会立即注册
 
-Provides some hook functions to monitor the life cycle of local services
+提供了一些钩子函数，用于监听局部服务的生命周期
 
 
-### Subscribe to partial services
+### 订阅局部服务
 
 ```tsx
 export default memo(() => {
@@ -103,19 +103,20 @@ export default memo(() => {
 });
 ```
 
-Initialize a local service when using `useService`
+使用`useService`时初始化局部服务
 
-The `services` attribute of `RxService` is used to add local services. Setting `global` to `fasle` will not subscribe to global services. If you need local services and also need global services, you can ignore this option
+`RxService`的`services`属性用于添加局部服务，`global`设置为`fasle`将不会订阅全局服务，如果你需要局部服务并且也需要全局服务可以无视此选项
 
-When `RxService` is destroyed, all local services in `services` will also be destroyed automatically, and `OnDestroy` will be called before destruction
+`RxService` 被销毁时，`services`中的所有局部服务也会自动销毁，销毁前会调用 `OnDestroy`
 
-`OnCreate` is triggered before the component rendering is complete
+`OnCreate` 在组件渲染完成之前触发
 
-## other problems
+## 其他问题
 
-### Don't want to monitor the change of a certain attribute in the service?
+### 不想监听服务中的某个属性的变更?
 
-  1. Use `@Ignore` decorator
+1. 使用`@Ignore`装饰器
+
   ```ts
   @Injectable({ global: false })
   class PS implements ServiceProxy {
@@ -125,7 +126,7 @@ When `RxService` is destroyed, all local services in `services` will also be des
   }
   ```
 
-   2. Use the `autoIgnore` configuration option to automatically ignore attributes ending in `_`
+   2. 使用`autoIgnore`配置选项，会自动无视以`_`结尾的属性
   ```ts
   @Injectable({ global: false, autoIgnore: true })
   class PS implements ServiceProxy {
@@ -133,9 +134,9 @@ When `RxService` is destroyed, all local services in `services` will also be des
   }
   ```
 
-### Use other services in the service?
+### 在服务中使用其它服务?
 
-  1. Use `constructor` dependency injection
+  1. 使用`constructor`依赖注入
   ```ts
   import "reflect-metadata";
 
@@ -149,7 +150,7 @@ When `RxService` is destroyed, all local services in `services` will also be des
   }
   ```
 
-  2. Use static properties
+  2. 使用静态属性
   ```ts
   @Injectable()
   class UserinfoService {
@@ -162,9 +163,8 @@ When `RxService` is destroyed, all local services in `services` will also be des
     i = 0;
   }
   ```
-   `UserinfoService.ins` It is a singleton after proxy (subscribers will be notified of data changes)
 
-  3. Use `@Late` decorator
+  3. 使用`@Late`装饰器
   ```ts
   @Injectable({ id: "UserinfoService" })
   class UserinfoService {
@@ -184,9 +184,9 @@ When `RxService` is destroyed, all local services in `services` will also be des
   class AfterService {}
   ```
 
-  `@Late` The decorator needs to provide the unique id of a service. If the service has been initialized, the attribute (userinfo) will be initialized immediately, otherwise it will wait until the service is initialized before setting the attribute (after)
+  `@Late`装饰器需要提供一个服务的唯一id，如果这个服务已经被初始化则会立即初始化属性(userinfo)，否则会一直等到服务初始化时才设置属性(after)
 
-  4. Use multiple services in a component?
+  4. 在组件中使用多个服务?
   ```ts
   @Injectable()
   class UserinfoService {}
@@ -210,7 +210,10 @@ When `RxService` is destroyed, all local services in `services` will also be des
   });
   ```
 
-  5. Use the last destroyed data?
+### 使用上一次销毁的数据?
+
+只能在局部服务中在这样做
+
   ```ts
   @Injectable({ global: false })
   class PS implements ServiceProxy {
@@ -221,11 +224,66 @@ When `RxService` is destroyed, all local services in `services` will also be des
   }
   ```
 
-If `i=10` when the page is destroyed and `true` is returned in the `OnDestroy` hook, the data will not be initialized next time the service is restarted but the previous data will continue to be used. You will be able to enter the page again Directly see `i=10` instead of `i=0`
+  如果在页面销毁时`i=10`，并且在`OnDestroy`钩子中返回`true`，那么下次重启这个服务时，数据不会被初始化而是继续使用上一次的数据，再次进入页面你会直接看到`i=10`而不是`i=0`
 
-**The service has always existed in memory since the first time it was created, and destruction is just a state, and all changes in the destroyed state will not notify subscribers.**
+  **服务从第一次创建就一直存在于内存中,销毁只是一个状态,在销毁状态下所有的变更都不会通知订阅者**
 
-**When the service in the destroyed state is started again, only the destroyed state is cancelled. The initialization of the data depends on the return value of the last `OnDestroy` hook. If it returns `true`, the previous data will continue to be used, otherwise an instance will be reinitialized, and Create a new proxy and trigger the `OnCreate` hook**
+  **当再次启动销毁状态的服务时，只是取消了销毁状态，数据的初始化取决于上一次`OnDestroy`钩子的返回值，如果返回`true`将继续使用以前的数据，否则会重新初始化一个实例，并创建一个新的代理然后触发`OnCreate`钩子**
+
+### 数据改变时，不通知订阅者
+
+  ```ts
+  @Injectable()
+  class PS {
+    i = 0;
+
+    add() {
+      noreact(() => {
+        this.i++
+      })
+    }
+  }
+  ```
+
+  在`noreact`的钩子函数中，改变数据时不会通知订阅者
+
+
+  作为装饰器使用也可以达到同样的效果
+  ```ts
+  @Injectable()
+  class PS {
+    i = 0;
+
+    @noreact()
+    add() {
+      this.i++
+    }
+  }
+  ```
+
+### 监听属性的变更
+
+```ts
+class PS {
+  i = 0;
+  obj = { i: 0 }
+
+  @Watch(['this.i', 'this.obj.i'])
+  watch(key: string, newVal: number, oldVal: number) {
+    console.log(key, newVal, oldVal);
+  }
+}
+```
+
+可以使用`Watch`装饰器，监听一个或多个属性的变更
+
+### 会自动代理哪些对象?
+
+- `Array`
+- `[object Object]`
+- `[object Set]`
+- `[object Map]`
+- `[object WeakMap]`
 
 
 ## Run test

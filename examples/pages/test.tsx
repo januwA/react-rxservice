@@ -23,10 +23,16 @@ class PS implements ServiceProxy {
     })
   }
 
+  @noreact()
+  add3(name = 'ajanuw') {
+    console.log(name);
+    this.i++
+    this.obj.i++;
+  }
+
   @Watch(['this.i', 'this.obj.i'])
   watch(key: string, newVal: number, oldVal: number) {
     console.log(key, newVal, oldVal);
-
   }
 
 
@@ -56,7 +62,8 @@ export default memo(() => {
             <p>{ps.obj.i}</p>
             <p>{ps.i}</p>
             <button onClick={ps.add}>add</button>
-            <button onClick={ps.add2}>add(noreact)</button>
+            <button onClick={ps.add2}>add2(noreact)</button>
+            <button onClick={() => ps.add3('suou')}>add3(noreact)</button>
             <hr />
             <h1>Set 数据测试</h1>
             <h2>{ps.setObj.size}</h2>
