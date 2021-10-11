@@ -214,3 +214,7 @@ async function testDelTodos(page: pptr.Page) {
   items = await page.$$(".list .item");
   assert.ok(items.length === 0);
 }
+
+async function testMapSetData(page: pptr.Page) {
+  // TODO: 测试Map和Set数据
+}
