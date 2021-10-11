@@ -1,15 +1,16 @@
 import { ServiceManager } from "./ServiceManager";
 import { ServiceIgnore_t } from "./interface";
 
-const isProxyData = Symbol('__proxy__')
+const IS_PROXY = Symbol('__proxy__')
+const PROXY_SET = Symbol('__proxy_set__')
 
 function canProxy(obj: any): boolean {
   if (ServiceManager.isService(obj)) return false;
 
   const t = Object.prototype.toString.call(obj);
-  const types = ['[object Object]']
+  const types = ['[object Object]', '[object Set]']
   if (Array.isArray(obj) || types.includes(t)) {
-    if (Reflect.get(obj, isProxyData)) return false;
+    if (Reflect.get(obj, IS_PROXY)) return false;
 
     return true
   }
@@ -37,19 +38,127 @@ export function observable(
 
   const proxy: any = new Proxy(obj, {
     get(t: any, k: any) {
-      if (k in ignores && ignores[k].get) return Reflect.get(t, k);
+      let v = Reflect.get(t, k);
+
+      if (t instanceof Set) {
+        if (k === 'size') return v;
+
+        if (!Reflect.has(t, PROXY_SET)) Reflect.set(t, PROXY_SET, new Map());
+
+
+        if (typeof v === "function") {
+          const funcProp = v as Function;
+
+          if (k === "add") {
+            v = function () {
+              const args = Array.from(arguments);
+              const [value] = args;
+
+              // 如果添加了已存在的值，直接返回
+              if (t.has(value)) return t;
+
+              const ret = funcProp.apply(t, args);
+              changed?.('', proxy, proxy);
+              return ret;
+            };
+          } else if (k === "delete") {
+            v = function () {
+              const args = Array.from(arguments);
+              const ret = funcProp.apply(t, args);
+
+              if (ret) {
+                const _cache: Map<any, any> = Reflect.get(t, PROXY_SET)
+                _cache.delete(args[0]);
+                changed?.('', proxy, proxy);
+              }
+
+              return ret;
+            };
+          } else if (k === "clear") {
+            v = function () {
+              const args = Array.from(arguments);
+              const ret = funcProp.apply(t, args);
+              const _cache: Map<any, any> = Reflect.get(t, PROXY_SET)
+              _cache.clear();
+              changed?.('', proxy, proxy);
+              return ret;
+            };
+          } else if (k === "forEach") {
+            v = function () {
+              const [callbackfn, thisArg] = Array.from(arguments);
+
+              const _cache: Map<any, any> = Reflect.get(t, PROXY_SET)
+              return funcProp.apply(t, [
+                function () {
+                  const args = Array.from(arguments);
+                  const [value] = args;
+
+                  if (!_cache.has(value)) {
+                    _cache.set(value, observable(value, '', changed))
+                  }
+
+                  const newval = _cache.get(value)
+                  return callbackfn.apply(thisArg, [newval, newval, proxy]);
+                },
+                thisArg,
+              ]);
+            };
+          } else if (k === "entries" || k === "keys" || k === "values" || k === Symbol.iterator) {
+            v = function () {
+              const args = Array.from(arguments);
+              const ret = funcProp.apply(t, args);
+
+              const _cache: Map<any, any> = Reflect.get(t, PROXY_SET)
+              for (let it of ret) {
+                if (k === "entries") [it] = it;
+                if (!_cache.has(it)) {
+                  _cache.set(it, observable(it, '', changed))
+                }
+              }
+
+              const values = Array.from(_cache.values()).map(e => [e, e]);
+
+              let i = 0;
+              return {
+                [Symbol.iterator]() {
+                  return {
+                    next: this.next.bind(this),
+                  };
+                },
+                next() {
+                  if (i < values.length) {
+                    let value: any = values[i++];
+                    if (k === "keys" || k === "values" || k === Symbol.iterator) {
+                      [value] = value
+                    }
+                    return { value, done: false };
+                  }
+                  return { value: null, done: true };
+                },
+              };
+            };
+          } else {
+            v = v.bind(t);
+          }
+
+          return v;
+        }
+      }
+
+
+
+      if (k in ignores && ignores[k].get) return v;
 
       const des = getOwnPropertyDescriptor(t, k);
       if (des?.value && typeof des.value === "function") {
         return des.value.bind(proxy);
       }
 
-      let val = des?.get ? des.get.call(proxy) : Reflect.get(t, k);
+      let val = des?.get ? des.get.call(proxy) : v;
 
       if (canProxy(val)) {
         const _watchKey = `${watchKey}.${k}`;
         const proxyVal = observable(val, _watchKey, changed)
-        Reflect.set(val, isProxyData, true)
         Reflect.set(t, k, proxyVal)
         val = proxyVal;
       }
@@ -81,6 +190,7 @@ export function observable(
       return true;
     },
   });
+  Reflect.set(obj, IS_PROXY, true)
 
   return proxy;
 }
