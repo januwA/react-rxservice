@@ -1,5 +1,4 @@
 import React, { memo } from "react";
-import { Link } from "react-router-dom";
 import { Injectable, RxService, useService, ServiceProxy } from "../../src";
 import { AppService } from "../service";
 
@@ -30,11 +29,6 @@ export default memo(() => {
               <button className="ps-btn" onClick={() => ps.i++}>
                 {ps.i}
               </button>
-            </p>
-            <p>
-              <Link to="../">
-                <button className="back-btn">back</button>
-              </Link>
             </p>
           </div>
         );

@@ -5,6 +5,7 @@ import App from "./pages/app";
 import About from "./pages/about";
 import Todos from "./pages/todos";
 import TestPage from "./pages/test";
+import SetMapPage from "./pages/set-map";
 
 ReactDOM.render(
   <BrowserRouter>
@@ -23,6 +24,10 @@ ReactDOM.render(
 
       <Route exact path="/test">
         <TestPage />
+      </Route>
+
+      <Route exact path="/set-map">
+        <SetMapPage />
       </Route>
     </Switch>
   </BrowserRouter>,

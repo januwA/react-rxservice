@@ -5,31 +5,6 @@ const objKey = {}
 
 @Injectable({ global: false, autoIgnore: true })
 class PS implements ServiceProxy {
-  i = 0;
-
-  obj = {
-    i: 0
-  }
-
-  add() {
-    this.i++
-  }
-
-
-  add2() {
-    noreact(() => {
-      this.i++
-      this.obj.i++;
-    })
-  }
-
-  @noreact()
-  add3(name = 'ajanuw') {
-    console.log(name);
-    this.i++
-    this.obj.i++;
-  }
-
   @Watch(['this.i', 'this.obj.i'])
   watch(newVal: number, oldVal: number, key: string,) {
     console.log(key, newVal, oldVal);
@@ -59,45 +34,39 @@ export default memo(() => {
       builder={(c: number) => {
         return (
           <div>
-            <p>{ps.obj.i}</p>
-            <p>{ps.i}</p>
-            <button onClick={ps.add}>add</button>
-            <button onClick={ps.add2}>add2(noreact)</button>
-            <button onClick={() => ps.add3('suou')}>add3(noreact)</button>
-            <hr />
-            <h1>Set 数据测试</h1>
-            <h2>{ps.setObj.size}</h2>
+            <h1>Set Data</h1>
+            <h2 className='set-size'>{ps.setObj.size}</h2>
             {Array.from(ps.setObj).map((e, i) => {
-              return <p key={i}>{JSON.stringify(e)}
-
-                {typeof e === 'object' && <button onClick={() => {
+              return <p key={i} className={typeof e === 'object' ? 'set-obj' : ''}>{JSON.stringify(e)}
+                {typeof e === 'object' && <button className="set-change-obj-btn" onClick={() => {
                   e.name = 'suou'
                 }}>change obj</button>}
               </p>
             })}
-            <button onClick={() => {
+            <button className='set-add-btn' onClick={() => {
               ps.setObj.add(4)
             }}>add</button>
 
-            <button onClick={() => {
+            <button className='set-del-btn' onClick={() => {
+              ps.setObj.delete(2)
+            }}>delete</button>
+
+            <button className='set-clear-btn' onClick={() => {
               ps.setObj.clear()
             }}>clear</button>
 
-            <button onClick={() => {
-              ps.setObj.delete(2)
-            }}>delete</button>
             <hr />
-            <h1>Map 数据测试</h1>
-            <p>{ps.mapObj.get('a')} <button onClick={() => {
+            <h1>Map Data</h1>
+            <p> <span className="map-a">{ps.mapObj.get('a')}</span> <button className="map-change-a-btn" onClick={() => {
               const ret = ps.mapObj.set('a', '11')
             }}>set</button>
 
-              <button onClick={() => {
+              <button className="map-del-a-btn" onClick={() => {
                 ps.mapObj.delete('a')
               }}>delete</button>
             </p>
             <p>{ps.mapObj.get('b')}</p>
-            <p>{JSON.stringify(ps.mapObj.get('c'))}   <button onClick={() => {
+            <p className="map-obj">{JSON.stringify(ps.mapObj.get('c'))}   <button className="map-obj-change-btn" onClick={() => {
               ps.mapObj.get('c').name = 'suou'
             }}>change name</button></p>
 
@@ -106,7 +75,7 @@ export default memo(() => {
             }}>clear</button>
             <hr />
 
-            <h1>WeakMap 数据测试</h1>
+            <h1>WeakMap Data</h1>
             <p>{JSON.stringify(ps.weakMap.get(objKey))} <button onClick={() => {
               ps.weakMap.get(objKey)!.name = 'suou'
             }}>change </button>  <button onClick={() => {

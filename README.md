@@ -269,7 +269,7 @@ class PS {
   obj = { i: 0 }
 
   @Watch(['this.i', 'this.obj.i'])
-  watch(key: string, newVal: number, oldVal: number) {
+  watch(newVal: number, oldVal: number, key: string) {
     console.log(key, newVal, oldVal);
   }
 }

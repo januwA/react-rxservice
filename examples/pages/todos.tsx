@@ -1,5 +1,4 @@
 import React, { ChangeEvent, memo, useRef } from "react";
-import { Link } from "react-router-dom";
 import { Injectable, RxService, useService, ServiceProxy } from "../../src";
 
 @Injectable({ global: false, autoIgnore: true })
@@ -40,11 +39,6 @@ export default memo(() => {
       builder={() => {
         return (
           <>
-            <p>
-              <Link to="../">
-                <button className="back-btn">Back</button>
-              </Link>
-            </p>
             <p>
               <input ref={ps.inputRef_} type="text" className="input-todo" />
               <button className="add-btn" onClick={ps.add}>

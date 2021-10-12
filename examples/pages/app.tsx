@@ -44,6 +44,12 @@ export default memo(() => {
                 <button className="to-test-page-btn">to test page</button>
               </Link>
             </p>
+
+            <p>
+              <Link to="/set-map">
+                <button className="to-setmap-page-btn">to set-map page</button>
+              </Link>
+            </p>
           </div>
         );
       }}

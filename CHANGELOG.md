@@ -1,3 +1,8 @@
+## 1.4.0 [2021-10-12]
+
+- ✅ 添加测试
+- 🐤 修改`Watch`参数位置
+
 ## 1.3.0 [2021-10-11]
 
 - ✨ Use `===` to judge that the same value will not trigger `change`

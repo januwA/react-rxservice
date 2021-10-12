@@ -18,28 +18,32 @@ const gotoUrl = "http://localhost:8888/";
   await testLate(page);
 
   await page.click(".to-about-page-btn");
-
   await testAboutState(page);
 
-  await page.click(".back-btn");
+  await page.goBack();
   await page.click(".to-about-page-btn");
 
   await testAboutStateCache(page);
 
-  await page.click(".back-btn");
+  await page.goBack();
   await page.click(".to-about-page-btn");
 
   await testAboutStateCache2(page);
 
-  await page.click(".back-btn");
+  await page.goBack();
   await page.click(".to-todos-page-btn");
 
   await testAddTodo(page);
 
-  await page.click(".back-btn");
+  await page.goBack();
   await page.click(".to-todos-page-btn");
 
   await testDelTodos(page);
+
+  await page.goBack();
+  await page.click(".to-setmap-page-btn");
+
+  await testMapSetData(page);
 
   await browser.close();
 })();
@@ -216,5 +220,44 @@ async function testDelTodos(page: pptr.Page) {
 }
 
 async function testMapSetData(page: pptr.Page) {
-  // TODO: 测试Map和Set数据
+  // set
+  let p = await page.$(".set-size");
+  assert.ok(p !== null);
+  assert.ok((await p.evaluate((node) => node.textContent)) == "4");
+
+  await page.click(".set-add-btn");
+  assert.ok((await p.evaluate((node) => node.textContent)) == "5");
+
+  await page.click(".set-del-btn");
+  assert.ok((await p.evaluate((node) => node.textContent)) == "4");
+
+  await page.click(".set-change-obj-btn");
+  assert.ok((await p.evaluate((node) => node.textContent)) == "4");
+
+  p = await page.$(".set-obj");
+  assert.ok(p !== null);
+  assert.ok(
+    (await p.evaluate((node) => node.textContent))?.includes(`{"name":"suou"}`)
+  );
+
+  p = await page.$(".set-size");
+  assert.ok(p !== null);
+  await page.click(".set-clear-btn");
+  assert.ok((await p.evaluate((node) => node.textContent)) == "0");
+
+  // map
+  p = await page.$(".map-a");
+  assert.ok(p !== null);
+  assert.ok((await p.evaluate((node) => node.textContent)) == "1");
+
+  await page.click(".map-change-a-btn");
+  assert.ok((await p.evaluate((node) => node.textContent)) == "11");
+
+  p = await page.$(".map-obj");
+  assert.ok(p !== null);
+
+  await page.click(".map-obj-change-btn");
+  assert.ok(
+    (await p.evaluate((node) => node.textContent))?.includes('{"name":"suou"}')
+  );
 }

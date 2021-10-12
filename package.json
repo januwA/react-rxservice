@@ -1,6 +1,6 @@
 {
   "name": "ajanuw-react-rxservice",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "react service",
   "private": false,
   "main": "./dist/umd/react-rxservice.js",

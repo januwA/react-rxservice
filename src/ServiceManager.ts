@@ -59,24 +59,23 @@ export class ServiceManager {
     const cb = t[key]
     if (typeof cb !== 'function')
       throw 'Watch decorator can only be used on functions'
-    t.constructor[SERVICE_WATCH] ??= Object.create(null);
+    const watchs = t.constructor[SERVICE_WATCH] ??= Object.create(null);
 
     keys = [...new Set(keys)]
 
     for (const key of keys) {
-      if (t.constructor[SERVICE_WATCH][key]) {
-        t.constructor[SERVICE_WATCH][key].callbacks.push(cb);
+      if (watchs[key]) {
+        watchs[key].callbacks.push(cb);
       } else {
-
         const emit$ = new Subject();
         emit$.pipe<any>(debounceTime(DEBOUNCE_TIME))
           .subscribe(({ proxy, watchKey, newValue, oldValue }) => {
-            for (const cb of t.constructor[SERVICE_WATCH][key].callbacks) {
-              cb.call(proxy, watchKey, newValue, oldValue);
+            for (const cb of watchs[key].callbacks) {
+              cb.call(proxy, newValue, oldValue, watchKey);
             }
           })
 
-        t.constructor[SERVICE_WATCH][key] = {
+          watchs[key] = {
           emit$,
           callbacks: [cb]
         }
