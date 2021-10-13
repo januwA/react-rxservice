@@ -23,8 +23,8 @@ export class ServiceManager {
   static ID = 0;
 
   /**
- * 为true时，所有服务的变更都不会通知订阅者
- */
+   * 为true时，所有服务的变更都不会通知订阅者 
+   */
   private _noreact = false;
   noreact(cb: Function) {
     this._noreact = true;
@@ -75,7 +75,7 @@ export class ServiceManager {
             }
           })
 
-          watchs[key] = {
+        watchs[key] = {
           emit$,
           callbacks: [cb]
         }
@@ -255,7 +255,7 @@ export class ServiceManager {
       this.setLate(t, service.proxy);
 
       if (config?.staticInstance?.trim()) {
-        this.setStaticInstance(t, config.staticInstance, service);
+        this.setMeta(t, config.staticInstance, service.proxy);
       }
 
       // 通知全局服务订阅者
@@ -273,7 +273,7 @@ export class ServiceManager {
       if (flags & RFLAG.KEEP)
         return cacheService!.proxy.OnLink?.(), cacheService!;
 
-      // 重置数据
+      // 重置实例
       return initProxy(this.SERVICE_TABLE[config.id]);
     }
 
@@ -289,11 +289,13 @@ export class ServiceManager {
     } as ServiceCache);
     this.TARGET_ID_MAP.set(t, config.id);
 
-    const _sub = change$.pipe(debounceTime(DEBOUNCE_TIME)).subscribe(() => {
-      service.proxy.OnUpdate?.();
-
+    const updateSub = change$.pipe(debounceTime(DEBOUNCE_TIME)).subscribe(() => {
       // 如果未初始化钩子，将取消这个订阅
-      if (!service.proxy.OnUpdate) _sub.unsubscribe();
+      if (service.proxy.OnUpdate) {
+        service.proxy.OnUpdate();
+      } else {
+        updateSub.unsubscribe();
+      }
     });
 
     return initProxy(service);
@@ -328,15 +330,11 @@ export class ServiceManager {
 
   isGlobal(t: Target_t<any>) {
     const c = this.getMeta(t, SERVICE_CONFIG) as ServiceConfig_t;
-    return c.global;
+    return Boolean(c.global);
   }
 
   getService(t: Target_t<any>): ServiceCache {
     return this.register(t);
-  }
-
-  private setStaticInstance(t: Target_t, key: string, service: ServiceCache) {
-    this.setMeta(t, key, service.proxy);
   }
 
   subscribeServiceStream(stream: Observable<any[]>, next: () => any) {

@@ -50,7 +50,7 @@ export type ServiceConfig_t = {
 };
 
 /**
- * 服务已挂载，this指向proxy
+ * 服务已挂载
  */
 export interface OnCreate {
   OnCreate(): any;
@@ -64,7 +64,7 @@ export interface OnLink {
 }
 
 /**
- * 触发频率较小
+ * 数据变更时
  *
  * ! 不要再钩子里改变属性，会导致递归
  */
@@ -95,11 +95,6 @@ export interface ServiceCache {
    * 代理后的单例
    */
   proxy: ServiceProxy;
-
-  /**
-   * 未代理的单例
-   */
-  instance: AnyObject;
 
   /**
    * proxy数据变更后，这个流将通知订阅者

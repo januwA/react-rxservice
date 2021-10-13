@@ -146,7 +146,6 @@ export default memo(() => {
   @Injectable()
   class AppService {
     constructor(public readonly userinfo: UserinfoService) {}
-    i = 0;
   }
   ```
 
@@ -212,7 +211,7 @@ export default memo(() => {
 
 ### 使用上一次销毁的数据?
 
-只能在局部服务中在这样做
+*只能在局部服务中在这样做!*
 
   ```ts
   @Injectable({ global: false })
@@ -230,7 +229,7 @@ export default memo(() => {
 
   **当再次启动销毁状态的服务时，只是取消了销毁状态，数据的初始化取决于上一次`OnDestroy`钩子的返回值，如果返回`true`将继续使用以前的数据，否则会重新初始化一个实例，并创建一个新的代理然后触发`OnCreate`钩子**
 
-### 数据改变时，不通知订阅者
+### 改变数据时，不想通知订阅者？
 
   ```ts
   @Injectable()
