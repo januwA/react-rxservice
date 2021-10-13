@@ -30,9 +30,8 @@ export declare class ServiceManager {
     destroyServices(targets: Target_t[]): void;
     getMeta<T = any>(t: Target_t<any>, key: string): T;
     setMeta<T = any>(t: Target_t<any>, key: string, value: T): T;
-    isGlobal(t: Target_t<any>): boolean | undefined;
+    isGlobal(t: Target_t<any>): boolean;
     getService(t: Target_t<any>): ServiceCache;
-    private setStaticInstance;
     subscribeServiceStream(stream: Observable<any[]>, next: () => any): import("rxjs").Subscription;
 }
 //# sourceMappingURL=ServiceManager.d.ts.map

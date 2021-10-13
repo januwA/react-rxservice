@@ -31,8 +31,8 @@ export interface AnyObject {
 export interface ServiceProxy extends Partial<OnCreate>, Partial<OnLink>, Partial<OnUpdate>, Partial<OnDestroy>, AnyObject {
 }
 export interface ServiceCache {
-    proxy: ServiceProxy;
     instance: AnyObject;
+    proxy: ServiceProxy;
     change$: RxServiceSubject;
     isDestory: boolean;
     isKeep: boolean;

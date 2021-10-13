@@ -182,7 +182,7 @@ export class ServiceManager {
             this.setMeta(t, SERVICE_CONFIG, config);
             this.setLate(t, service.proxy);
             if ((_a = config === null || config === void 0 ? void 0 : config.staticInstance) === null || _a === void 0 ? void 0 : _a.trim()) {
-                this.setStaticInstance(t, config.staticInstance, service);
+                this.setMeta(t, config.staticInstance, service.proxy);
             }
             if (config.global)
                 this.addGlobalService(service.change$);
@@ -206,11 +206,13 @@ export class ServiceManager {
             change$,
         });
         this.TARGET_ID_MAP.set(t, config.id);
-        const _sub = change$.pipe(debounceTime(DEBOUNCE_TIME)).subscribe(() => {
-            var _a, _b;
-            (_b = (_a = service.proxy).OnUpdate) === null || _b === void 0 ? void 0 : _b.call(_a);
-            if (!service.proxy.OnUpdate)
-                _sub.unsubscribe();
+        const updateSub = change$.pipe(debounceTime(DEBOUNCE_TIME)).subscribe(() => {
+            if (service.proxy.OnUpdate) {
+                service.proxy.OnUpdate();
+            }
+            else {
+                updateSub.unsubscribe();
+            }
         });
         return initProxy(service);
     }
@@ -225,13 +227,10 @@ export class ServiceManager {
     }
     isGlobal(t) {
         const c = this.getMeta(t, SERVICE_CONFIG);
-        return c.global;
+        return Boolean(c.global);
     }
     getService(t) {
         return this.register(t);
-    }
-    setStaticInstance(t, key, service) {
-        this.setMeta(t, key, service.proxy);
     }
     subscribeServiceStream(stream, next) {
         return stream
