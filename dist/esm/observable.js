@@ -26,9 +26,23 @@ function getOwnPropertyDescriptor(target, key) {
         return des;
     return getOwnPropertyDescriptor(Object.getPrototypeOf(target), key);
 }
+class Observer {
+    constructor() {
+        this._list = [];
+    }
+    add() {
+        if (ServiceManager._autoWatchSubscriber && !this._list.includes(ServiceManager._autoWatchSubscriber)) {
+            this._list.push(ServiceManager._autoWatchSubscriber);
+        }
+    }
+    publish() {
+        this._list.forEach((it) => it());
+    }
+}
 export function observable(obj, watchKey = "this", changed, ignores = Object.create(null)) {
     if (!canProxy(obj))
         return obj;
+    const autoWatchMap = new Map();
     const proxy = new Proxy(obj, {
         get(t, k) {
             let v = Reflect.get(t, k);
@@ -254,27 +268,35 @@ export function observable(obj, watchKey = "this", changed, ignores = Object.cre
                 Reflect.set(t, k, proxyVal);
                 val = proxyVal;
             }
+            if (!(t instanceof Set || t instanceof Map || t instanceof WeakMap || k === IS_PROXY || k === Symbol.toStringTag)) {
+                if (!autoWatchMap.has(k))
+                    autoWatchMap.set(k, new Observer());
+                if (ServiceManager._autoWatchSubscriber)
+                    autoWatchMap.get(k).add();
+            }
             return val;
         },
         set(t, k, v) {
+            var _a;
             const oldVal = Reflect.get(t, k);
-            if (v === oldVal)
+            if (v === oldVal && (Array.isArray(t) && k !== 'length'))
                 return true;
-            const isIgnoreTheKey = k in ignores && ignores[k].set;
-            if (isIgnoreTheKey)
+            const isIgnoreKey = k in ignores && ignores[k].set;
+            if (isIgnoreKey)
                 return Reflect.set(t, k, v), true;
             const _watchKey = `${watchKey}.${k}`;
             const des = getOwnPropertyDescriptor(t, k);
-            if (!isIgnoreTheKey) {
+            if (!isIgnoreKey) {
                 v = observable(v, _watchKey, changed);
             }
             if (des === null || des === void 0 ? void 0 : des.set)
                 des.set.call(proxy, v);
             else
                 Reflect.set(t, k, v);
-            if (!isIgnoreTheKey) {
+            if (!isIgnoreKey) {
                 changed === null || changed === void 0 ? void 0 : changed(_watchKey, v, oldVal);
             }
+            (_a = autoWatchMap.get(k)) === null || _a === void 0 ? void 0 : _a.publish();
             return true;
         },
     });

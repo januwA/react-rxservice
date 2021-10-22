@@ -2,6 +2,7 @@ import { BehaviorSubject, Observable } from "rxjs";
 import { Target_t, ServiceCache, ServiceProxy, RxServiceSubject, IgnoreConfig_t } from "./interface";
 export declare class ServiceManager {
     static ID: number;
+    static _autoWatchSubscriber: Function | null;
     private _noreact;
     noreact(cb: Function): void;
     private static ins;
@@ -9,6 +10,7 @@ export declare class ServiceManager {
     static injectIgnore(t: any, key: any, config?: IgnoreConfig_t): void;
     static injectLate(t: any, key: any, sid: string): void;
     static injectWatch(t: any, key: any, keys: string[]): void;
+    static injectAutoWatch(t: any, cb: Function): void;
     getServiceFlag(t: Target_t): number;
     private gServiceList;
     GLOBAL_SERVICE$: BehaviorSubject<RxServiceSubject[]>;

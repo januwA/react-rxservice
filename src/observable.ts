@@ -32,6 +32,20 @@ function getOwnPropertyDescriptor(
   return getOwnPropertyDescriptor(Object.getPrototypeOf(target), key);
 }
 
+class Observer {
+  private _list: Function[] = [];
+
+  add() {
+    if (ServiceManager._autoWatchSubscriber && !this._list.includes(ServiceManager._autoWatchSubscriber)) {
+      this._list.push(ServiceManager._autoWatchSubscriber);
+    }
+  }
+
+  publish() {
+    this._list.forEach((it: any) => it());
+  }
+}
+
 export function observable(
   obj: any,
   watchKey: string = "this",
@@ -39,6 +53,8 @@ export function observable(
   ignores: ServiceIgnore_t = Object.create(null)
 ) {
   if (!canProxy(obj)) return obj;
+
+  const autoWatchMap: Map<string, Observer> = new Map();
 
   const proxy: any = new Proxy(obj, {
     get(t: any, k: any) {
@@ -285,30 +301,37 @@ export function observable(
         Reflect.set(t, k, proxyVal);
         val = proxyVal;
       }
+
+      if (!(t instanceof Set || t instanceof Map || t instanceof WeakMap || k === IS_PROXY || k === Symbol.toStringTag)) {
+        if (!autoWatchMap.has(k)) autoWatchMap.set(k, new Observer());
+        if (ServiceManager._autoWatchSubscriber) autoWatchMap.get(k)!.add();
+      }
+
       return val;
     },
     set(t: any, k: any, v: any) {
       const oldVal = Reflect.get(t, k);
-      if (v === oldVal) return true;
 
-      const isIgnoreTheKey = k in ignores && ignores[k].set;
+      // 数组的length，无法获取oldValue
+      if (v === oldVal && (Array.isArray(t) && k !== 'length')) return true;
 
-      if (isIgnoreTheKey) return Reflect.set(t, k, v), true;
+      const isIgnoreKey = k in ignores && ignores[k].set;
+      if (isIgnoreKey) return Reflect.set(t, k, v), true;
 
       const _watchKey = `${watchKey}.${k}`;
       const des = getOwnPropertyDescriptor(t, k);
 
-      if (!isIgnoreTheKey) {
+      if (!isIgnoreKey) {
         v = observable(v, _watchKey, changed);
       }
 
       if (des?.set) des.set.call(proxy, v);
       else Reflect.set(t, k, v);
 
-      if (!isIgnoreTheKey) {
+      if (!isIgnoreKey) {
         changed?.(_watchKey, v, oldVal);
       }
-
+      autoWatchMap.get(k)?.publish();
       return true;
     },
   });

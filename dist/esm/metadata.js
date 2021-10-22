@@ -26,6 +26,13 @@ export function Injectable(config) {
 export function Watch(keys) {
     return (target, key, des) => ServiceManager.injectWatch(target, key, keys);
 }
+export function AutoWatch() {
+    return (target, key, des) => {
+        if (typeof (des === null || des === void 0 ? void 0 : des.value) === "function") {
+            ServiceManager.injectAutoWatch(target, des.value);
+        }
+    };
+}
 export function noreact(cb) {
     if (cb && typeof cb === "function") {
         new ServiceManager().noreact(cb);

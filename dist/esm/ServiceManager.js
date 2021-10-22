@@ -1,5 +1,5 @@
 import { BehaviorSubject, debounceTime, mapTo, skip, Subject } from "rxjs";
-import { SERVICE_IGNORES, SERVICE_LATE, SERVICE_CONFIG, DEBOUNCE_TIME, RFLAG, SERVICE_WATCH, } from "./const";
+import { SERVICE_IGNORES, SERVICE_LATE, SERVICE_CONFIG, DEBOUNCE_TIME, RFLAG, SERVICE_WATCH, SERVICE_AUTO_WATCH, } from "./const";
 import { observable } from "./observable";
 export class ServiceManager {
     constructor() {
@@ -74,6 +74,12 @@ export class ServiceManager {
                 };
             }
         }
+    }
+    static injectAutoWatch(t, cb) {
+        var _a;
+        var _b;
+        const aw = (_a = (_b = t.constructor)[SERVICE_AUTO_WATCH]) !== null && _a !== void 0 ? _a : (_b[SERVICE_AUTO_WATCH] = []);
+        aw.push(cb);
     }
     getServiceFlag(t) {
         let flags = RFLAG.NINIT;
@@ -186,6 +192,15 @@ export class ServiceManager {
             }
             if (config.global)
                 this.addGlobalService(service.change$);
+            const aw = this.getMeta(t, SERVICE_AUTO_WATCH);
+            if (aw) {
+                for (const cb of aw) {
+                    ServiceManager._autoWatchSubscriber = cb.bind(service.proxy);
+                    ServiceManager._autoWatchSubscriber();
+                    ServiceManager._autoWatchSubscriber = null;
+                }
+                ServiceManager._autoWatchSubscriber = null;
+            }
             (_c = (_b = service.proxy).OnCreate) === null || _c === void 0 ? void 0 : _c.call(_b);
             return service;
         };
@@ -239,3 +254,4 @@ export class ServiceManager {
     }
 }
 ServiceManager.ID = 0;
+ServiceManager._autoWatchSubscriber = null;

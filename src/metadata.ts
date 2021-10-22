@@ -56,6 +56,19 @@ export function Watch(keys: string[]) {
 }
 
 /**
+ * 自动监听属性变更
+ * 
+ * ! 只能监听Array和[object Object]
+ */
+export function AutoWatch() {
+  return (target: any, key: PropertyKey, des?: PropertyDescriptor) => {
+    if (typeof des?.value === "function") {
+      ServiceManager.injectAutoWatch(target, des.value);
+    }
+  }
+}
+
+/**
  * 在改变数据时，不想刷新ui
  */
 export function noreact(cb?: Function) {

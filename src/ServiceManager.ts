@@ -6,6 +6,7 @@ import {
   DEBOUNCE_TIME,
   RFLAG,
   SERVICE_WATCH,
+  SERVICE_AUTO_WATCH,
 } from "./const";
 import {
   Target_t,
@@ -21,6 +22,7 @@ import { observable } from "./observable";
 
 export class ServiceManager {
   static ID = 0;
+  static _autoWatchSubscriber: Function | null = null;
 
   /**
    * 为true时，所有服务的变更都不会通知订阅者 
@@ -81,6 +83,11 @@ export class ServiceManager {
         }
       }
     }
+  }
+
+  static injectAutoWatch(t: any, cb: Function) {
+    const aw = t.constructor[SERVICE_AUTO_WATCH] ??= []
+    aw.push(cb)
   }
 
   getServiceFlag(t: Target_t) {
@@ -260,6 +267,16 @@ export class ServiceManager {
 
       // 通知全局服务订阅者
       if (config.global) this.addGlobalService(service.change$);
+
+      const aw = this.getMeta(t, SERVICE_AUTO_WATCH)
+      if (aw) {
+        for (const cb of aw) {
+          ServiceManager._autoWatchSubscriber = cb.bind(service.proxy);
+          ServiceManager._autoWatchSubscriber!();
+          ServiceManager._autoWatchSubscriber = null
+        }
+        ServiceManager._autoWatchSubscriber = null
+      }
 
       service.proxy.OnCreate?.();
       return service;

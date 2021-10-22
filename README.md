@@ -262,6 +262,7 @@ export default memo(() => {
 
 ### 监听属性的变更
 
+1. `Watch` 装饰器,监听一个或多个属性的变更
 ```ts
 class PS {
   i = 0;
@@ -274,7 +275,19 @@ class PS {
 }
 ```
 
-可以使用`Watch`装饰器，监听一个或多个属性的变更
+2. `AutoWatch` 自动监听属性变化
+
+```ts
+class PS implements ServiceProxy {
+  i = 0;
+  j = 0;
+
+  @AutoWatch()
+  watch() {
+    this.j = this.i * 2
+  }
+}
+```
 
 ### 会自动代理哪些对象?
 
