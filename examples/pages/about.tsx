@@ -1,4 +1,4 @@
-import React, { memo } from "react";
+import { memo } from "react";
 import { Injectable, RxService, useService, ServiceProxy } from "../../src";
 import { AppService } from "../service";
 

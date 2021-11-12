@@ -7,7 +7,7 @@ type MapPredicate<T> = T extends Target_t<any> ? InstanceType<T> : never;
 type Mapped<
   Arr extends Array<unknown>,
   Result extends Array<unknown> = []
-> = Arr extends []
+  > = Arr extends []
   ? []
   : Arr extends [infer H]
   ? [...Result, MapPredicate<H>]

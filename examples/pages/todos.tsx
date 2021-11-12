@@ -1,4 +1,4 @@
-import React, { ChangeEvent, memo, useRef } from "react";
+import React, { memo } from "react";
 import { Injectable, RxService, useService, ServiceProxy } from "../../src";
 
 @Injectable({ global: false, autoIgnore: true })
