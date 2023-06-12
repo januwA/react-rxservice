@@ -1,6 +1,12 @@
 import { SERVICE_CONFIG } from "./const";
 import { IgnoreConfig_t, Target_t, ServiceConfig_t } from "./interface";
 import { ServiceManager } from "./ServiceManager";
+import {
+  injectAutoWatch,
+  injectIgnore,
+  injectLate,
+  injectWatch,
+} from "./utils";
 
 /**
  * 延迟将这个属性初始化为服务
@@ -9,7 +15,7 @@ import { ServiceManager } from "./ServiceManager";
  */
 export function Late(sid: string) {
   return (target: any, key: PropertyKey, des?: PropertyDescriptor) =>
-    ServiceManager.injectLate(target, key, sid);
+    injectLate(target, key, sid);
 }
 
 /**
@@ -17,7 +23,7 @@ export function Late(sid: string) {
  */
 export function Ignore(config?: IgnoreConfig_t) {
   return (target: any, key: PropertyKey, des?: PropertyDescriptor) =>
-    ServiceManager.injectIgnore(target, key, config);
+    injectIgnore(target, key, config);
 }
 
 /**
@@ -52,36 +58,18 @@ export function Injectable(config?: ServiceConfig_t) {
  */
 export function Watch(keys: string[]) {
   return (target: any, key: PropertyKey, des?: PropertyDescriptor) =>
-    ServiceManager.injectWatch(target, key, keys);
+    injectWatch(target, key, keys);
 }
 
 /**
  * 自动监听属性变更
- * 
+ *
  * ! 只能监听Array和[object Object]
  */
 export function AutoWatch() {
   return (target: any, key: PropertyKey, des?: PropertyDescriptor) => {
     if (typeof des?.value === "function") {
-      ServiceManager.injectAutoWatch(target, des.value);
-    }
-  }
-}
-
-/**
- * 在改变数据时，不想刷新ui
- */
-export function noreact(cb?: Function) {
-  if (cb && typeof cb === "function") {
-    new ServiceManager().noreact(cb);
-  }
-
-  return (target: any, key: PropertyKey, des?: PropertyDescriptor) => {
-    if (typeof des?.value === "function") {
-      const cb = des.value;
-      des.value = function () {
-        new ServiceManager().noreact(() => cb.apply(this, arguments));
-      };
+      injectAutoWatch(target, des.value);
     }
   };
 }

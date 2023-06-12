@@ -237,28 +237,14 @@ export default memo(() => {
     i = 0;
 
     add() {
-      noreact(() => {
-        this.i++
-      })
+       NoReactBegin(this);
+       this.i++;
+       NoReactEnd(this);
     }
   }
   ```
 
-  在`noreact`的钩子函数中，改变数据时不会通知订阅者
-
-
-  作为装饰器使用也可以达到同样的效果
-  ```ts
-  @Injectable()
-  class PS {
-    i = 0;
-
-    @noreact()
-    add() {
-      this.i++
-    }
-  }
-  ```
+  `NoReactBegin`当前服务的所有状态变更都不会通知订阅者
 
 ### 监听属性的变更
 

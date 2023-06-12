@@ -1,9 +1,10 @@
-import { BehaviorSubject, debounceTime, mapTo, skip, Subject } from "rxjs";
-import { SERVICE_IGNORES, SERVICE_LATE, SERVICE_CONFIG, DEBOUNCE_TIME, RFLAG, SERVICE_WATCH, SERVICE_AUTO_WATCH, } from "./const";
+import { BehaviorSubject, debounceTime, mapTo, skip } from "rxjs";
+import { SERVICE_IGNORES, SERVICE_LATE, SERVICE_CONFIG, DEBOUNCE_TIME, RFLAG, SERVICE_WATCH, SERVICE_AUTO_WATCH, SERVICE_NOREACT, } from "./const";
 import { observable } from "./observable";
+import { injectIgnore } from "./utils";
 export class ServiceManager {
     constructor() {
-        this._noreact = false;
+        this.noreact = false;
         this.destroy = (t) => {
             var _a, _b, _c;
             const exist = this.TARGET_ID_MAP.has(t);
@@ -22,64 +23,6 @@ export class ServiceManager {
         this.TARGET_ID_MAP = new WeakMap();
         this.SERVICE_TABLE = Object.create(null);
         return (ServiceManager.ins = this);
-    }
-    noreact(cb) {
-        this._noreact = true;
-        cb();
-        this._noreact = false;
-    }
-    static isService(proxy) {
-        if (!proxy)
-            return false;
-        const proto = Object.getPrototypeOf(proxy);
-        if (!proto || !proto.constructor)
-            return false;
-        return proto.constructor[SERVICE_CONFIG];
-    }
-    static injectIgnore(t, key, config) {
-        var _a;
-        var _b;
-        (_a = (_b = t.constructor)[SERVICE_IGNORES]) !== null && _a !== void 0 ? _a : (_b[SERVICE_IGNORES] = Object.create(null));
-        t.constructor[SERVICE_IGNORES][key] = Object.assign({ get: true, set: true }, config);
-    }
-    static injectLate(t, key, sid) {
-        var _a;
-        var _b;
-        (_a = (_b = t.constructor)[SERVICE_LATE]) !== null && _a !== void 0 ? _a : (_b[SERVICE_LATE] = Object.create(null));
-        t.constructor[SERVICE_LATE][key] = sid;
-    }
-    static injectWatch(t, key, keys) {
-        var _a;
-        var _b;
-        const cb = t[key];
-        if (typeof cb !== 'function')
-            throw 'Watch decorator can only be used on functions';
-        const watchs = (_a = (_b = t.constructor)[SERVICE_WATCH]) !== null && _a !== void 0 ? _a : (_b[SERVICE_WATCH] = Object.create(null));
-        keys = [...new Set(keys)];
-        for (const key of keys) {
-            if (watchs[key]) {
-                watchs[key].callbacks.push(cb);
-            }
-            else {
-                const emit$ = new Subject();
-                emit$.pipe(debounceTime(DEBOUNCE_TIME))
-                    .subscribe(({ proxy, watchKey, newValue, oldValue }) => {
-                    for (const cb of watchs[key].callbacks) {
-                        cb.call(proxy, newValue, oldValue, watchKey);
-                    }
-                });
-                watchs[key] = {
-                    emit$,
-                    callbacks: [cb]
-                };
-            }
-        }
-    }
-    static injectAutoWatch(t, cb) {
-        var _a;
-        var _b;
-        const aw = (_a = (_b = t.constructor)[SERVICE_AUTO_WATCH]) !== null && _a !== void 0 ? _a : (_b[SERVICE_AUTO_WATCH] = []);
-        aw.push(cb);
     }
     getServiceFlag(t) {
         let flags = RFLAG.NINIT;
@@ -154,7 +97,7 @@ export class ServiceManager {
             const isRegexp = config.autoIgnore instanceof RegExp;
             keys
                 .filter((k) => isRegexp ? config.autoIgnore.test(k) : k.endsWith("_"))
-                .forEach((k) => ServiceManager.injectIgnore(t.prototype, k));
+                .forEach((k) => injectIgnore(t.prototype, k));
         }
         return ((_a = this.getMeta(t, SERVICE_IGNORES)) !== null && _a !== void 0 ? _a : Object.create(null));
     }
@@ -180,9 +123,14 @@ export class ServiceManager {
                     return;
                 const watchObj = this.getMeta(t, SERVICE_WATCH);
                 if (watchObj && watchObj[watchKey]) {
-                    watchObj[watchKey].emit$.next({ proxy: service.proxy, watchKey, newValue, oldValue });
+                    watchObj[watchKey].emit$.next({
+                        proxy: service.proxy,
+                        watchKey,
+                        newValue,
+                        oldValue,
+                    });
                 }
-                if (!this._noreact)
+                if (!this.noreact && !this.getMeta(t, SERVICE_NOREACT))
                     (_a = service.change$) === null || _a === void 0 ? void 0 : _a.next(undefined);
             }, ignores);
             this.setMeta(t, SERVICE_CONFIG, config);
@@ -221,7 +169,9 @@ export class ServiceManager {
             change$,
         });
         this.TARGET_ID_MAP.set(t, config.id);
-        const updateSub = change$.pipe(debounceTime(DEBOUNCE_TIME)).subscribe(() => {
+        const updateSub = change$
+            .pipe(debounceTime(DEBOUNCE_TIME))
+            .subscribe(() => {
             if (service.proxy.OnUpdate) {
                 service.proxy.OnUpdate();
             }
@@ -255,3 +205,25 @@ export class ServiceManager {
 }
 ServiceManager.ID = 0;
 ServiceManager._autoWatchSubscriber = null;
+export function NoReactBegin(target) {
+    if (!target) {
+        new ServiceManager().noreact = true;
+        return true;
+    }
+    const proto = Object.getPrototypeOf(target);
+    if (!proto || !proto.constructor)
+        return false;
+    proto.constructor[SERVICE_NOREACT] = true;
+    return true;
+}
+export function NoReactEnd(target) {
+    if (!target) {
+        new ServiceManager().noreact = false;
+        return true;
+    }
+    const proto = Object.getPrototypeOf(target);
+    if (!proto || !proto.constructor)
+        return false;
+    proto.constructor[SERVICE_NOREACT] = false;
+    return true;
+}

@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Injectable, RxService, useService, ServiceProxy, noreact, Watch, Ignore } from "../../src";
+import { Injectable, RxService, useService, ServiceProxy, Watch, Ignore } from "../../src";
 
 const objKey = {}
 

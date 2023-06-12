@@ -94,7 +94,7 @@ export interface ServiceCache {
   /**
    * 实例化的单例
    */
-  instance: AnyObject,
+  instance: AnyObject;
 
   /**
    * 代理后的单例

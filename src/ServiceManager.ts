@@ -1,4 +1,4 @@
-import { BehaviorSubject, debounceTime, mapTo, Observable, skip, Subject } from "rxjs";
+import { BehaviorSubject, debounceTime, mapTo, Observable, skip } from "rxjs";
 import {
   SERVICE_IGNORES,
   SERVICE_LATE,
@@ -7,6 +7,7 @@ import {
   RFLAG,
   SERVICE_WATCH,
   SERVICE_AUTO_WATCH,
+  SERVICE_NOREACT,
 } from "./const";
 import {
   Target_t,
@@ -15,80 +16,20 @@ import {
   ServiceIgnore_t,
   ServiceProxy,
   RxServiceSubject,
-  IgnoreConfig_t,
   AnyObject,
 } from "./interface";
 import { observable } from "./observable";
+import { injectIgnore } from "./utils";
 
 export class ServiceManager {
   static ID = 0;
   static _autoWatchSubscriber: Function | null = null;
-
-  /**
-   * 为true时，所有服务的变更都不会通知订阅者 
-   */
-  private _noreact = false;
-  noreact(cb: Function) {
-    this._noreact = true;
-    cb();
-    this._noreact = false;
-  }
-
   private static ins: ServiceManager;
 
-  static isService(proxy: ServiceProxy) {
-    if (!proxy) return false;
-    const proto = Object.getPrototypeOf(proxy);
-    if (!proto || !proto.constructor) return false;
-    return proto.constructor[SERVICE_CONFIG];
-  }
-
-  static injectIgnore(t: any, key: any, config?: IgnoreConfig_t) {
-    t.constructor[SERVICE_IGNORES] ??= Object.create(null);
-    t.constructor[SERVICE_IGNORES][key] = Object.assign(
-      { get: true, set: true },
-      config
-    );
-  }
-
-  static injectLate(t: any, key: any, sid: string) {
-    t.constructor[SERVICE_LATE] ??= Object.create(null);
-    t.constructor[SERVICE_LATE][key] = sid;
-  }
-
-
-  static injectWatch(t: any, key: any, keys: string[]) {
-    const cb = t[key]
-    if (typeof cb !== 'function')
-      throw 'Watch decorator can only be used on functions'
-    const watchs = t.constructor[SERVICE_WATCH] ??= Object.create(null);
-
-    keys = [...new Set(keys)]
-
-    for (const key of keys) {
-      if (watchs[key]) {
-        watchs[key].callbacks.push(cb);
-      } else {
-        const emit$ = new Subject();
-        emit$.pipe<any>(debounceTime(DEBOUNCE_TIME))
-          .subscribe(({ proxy, watchKey, newValue, oldValue }) => {
-            for (const cb of watchs[key].callbacks) {
-              cb.call(proxy, newValue, oldValue, watchKey);
-            }
-          })
-
-        watchs[key] = {
-          emit$,
-          callbacks: [cb]
-        }
-      }
-    }
-  }
-
-  static injectAutoWatch(t: any, cb: Function) {
-    const aw = t.constructor[SERVICE_AUTO_WATCH] ??= []
-    aw.push(cb)
-  }
+  /**
+   * 为true时，所有服务的变更都不会通知订阅者
+   */
+  noreact = false;
 
   getServiceFlag(t: Target_t) {
     let flags = RFLAG.NINIT;
@@ -211,7 +152,7 @@ export class ServiceManager {
         .filter((k) =>
           isRegexp ? (config.autoIgnore as RegExp).test(k) : k.endsWith("_")
         )
-        .forEach((k) => ServiceManager.injectIgnore(t.prototype, k));
+        .forEach((k) => injectIgnore(t.prototype, k));
     }
     return (
       this.getMeta<ServiceIgnore_t>(t, SERVICE_IGNORES) ?? Object.create(null)
@@ -245,14 +186,19 @@ export class ServiceManager {
         (watchKey, newValue, oldValue) => {
           if (service.isDestory) return;
 
-          const watchObj = this.getMeta(t, SERVICE_WATCH)
+          const watchObj = this.getMeta(t, SERVICE_WATCH);
           if (watchObj && watchObj[watchKey]) {
-            watchObj[watchKey].emit$.next({ proxy: service.proxy, watchKey, newValue, oldValue });
+            watchObj[watchKey].emit$.next({
+              proxy: service.proxy,
+              watchKey,
+              newValue,
+              oldValue,
+            });
           }
 
-          if (!this._noreact) service.change$?.next(undefined);
+          if (!this.noreact && !this.getMeta(t, SERVICE_NOREACT))
+            service.change$?.next(undefined);
         },
-
 
         ignores
       );
@@ -268,14 +214,14 @@ export class ServiceManager {
       // 通知全局服务订阅者
       if (config.global) this.addGlobalService(service.change$);
 
-      const aw = this.getMeta(t, SERVICE_AUTO_WATCH)
+      const aw = this.getMeta(t, SERVICE_AUTO_WATCH);
       if (aw) {
         for (const cb of aw) {
           ServiceManager._autoWatchSubscriber = cb.bind(service.proxy);
           ServiceManager._autoWatchSubscriber!();
-          ServiceManager._autoWatchSubscriber = null
+          ServiceManager._autoWatchSubscriber = null;
         }
-        ServiceManager._autoWatchSubscriber = null
+        ServiceManager._autoWatchSubscriber = null;
       }
 
       service.proxy.OnCreate?.();
@@ -306,14 +252,16 @@ export class ServiceManager {
     } as ServiceCache);
     this.TARGET_ID_MAP.set(t, config.id);
 
-    const updateSub = change$.pipe(debounceTime(DEBOUNCE_TIME)).subscribe(() => {
-      // 如果未初始化钩子，将取消这个订阅
-      if (service.proxy.OnUpdate) {
-        service.proxy.OnUpdate();
-      } else {
-        updateSub.unsubscribe();
-      }
-    });
+    const updateSub = change$
+      .pipe(debounceTime(DEBOUNCE_TIME))
+      .subscribe(() => {
+        // 如果未初始化钩子，将取消这个订阅
+        if (service.proxy.OnUpdate) {
+          service.proxy.OnUpdate();
+        } else {
+          updateSub.unsubscribe();
+        }
+      });
 
     return initProxy(service);
   }
@@ -361,3 +309,26 @@ export class ServiceManager {
   }
 }
 
+export function NoReactBegin(target?: any): boolean {
+  if (!target) {
+    new ServiceManager().noreact = true;
+    return true;
+  }
+
+  const proto = Object.getPrototypeOf(target);
+  if (!proto || !proto.constructor) return false;
+  proto.constructor[SERVICE_NOREACT] = true;
+  return true;
+}
+
+export function NoReactEnd(target?: any): boolean {
+  if (!target) {
+    new ServiceManager().noreact = false;
+    return true;
+  }
+
+  const proto = Object.getPrototypeOf(target);
+  if (!proto || !proto.constructor) return false;
+  proto.constructor[SERVICE_NOREACT] = false;
+  return true;
+}

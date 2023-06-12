@@ -1,11 +1,10 @@
 import { ServiceManager } from "./ServiceManager";
+import { IS_PROXY, PROXY_SET } from "./const";
 import { ServiceIgnore_t } from "./interface";
-
-const IS_PROXY = Symbol("__proxy__");
-const PROXY_SET = Symbol("__proxy_set__");
+import { isService } from "./utils";
 
 function canProxy(obj: any): boolean {
-  if (ServiceManager.isService(obj)) return false;
+  if (isService(obj)) return false;
 
   const t = Object.prototype.toString.call(obj);
   const types = [
@@ -36,7 +35,10 @@ class Observer {
   private _list: Function[] = [];
 
   add() {
-    if (ServiceManager._autoWatchSubscriber && !this._list.includes(ServiceManager._autoWatchSubscriber)) {
+    if (
+      ServiceManager._autoWatchSubscriber &&
+      !this._list.includes(ServiceManager._autoWatchSubscriber)
+    ) {
       this._list.push(ServiceManager._autoWatchSubscriber);
     }
   }
@@ -302,7 +304,15 @@ export function observable(
         val = proxyVal;
       }
 
-      if (!(t instanceof Set || t instanceof Map || t instanceof WeakMap || k === IS_PROXY || k === Symbol.toStringTag)) {
+      if (
+        !(
+          t instanceof Set ||
+          t instanceof Map ||
+          t instanceof WeakMap ||
+          k === IS_PROXY ||
+          k === Symbol.toStringTag
+        )
+      ) {
         if (!autoWatchMap.has(k)) autoWatchMap.set(k, new Observer());
         if (ServiceManager._autoWatchSubscriber) autoWatchMap.get(k)!.add();
       }
@@ -313,7 +323,7 @@ export function observable(
       const oldVal = Reflect.get(t, k);
 
       // 数组的length，无法获取oldValue
-      if (v === oldVal && (Array.isArray(t) && k !== 'length')) return true;
+      if (v === oldVal && Array.isArray(t) && k !== "length") return true;
 
       const isIgnoreKey = k in ignores && ignores[k].set;
       if (isIgnoreKey) return Reflect.set(t, k, v), true;

@@ -1,16 +1,10 @@
 import { BehaviorSubject, Observable } from "rxjs";
-import { Target_t, ServiceCache, ServiceProxy, RxServiceSubject, IgnoreConfig_t } from "./interface";
+import { Target_t, ServiceCache, RxServiceSubject } from "./interface";
 export declare class ServiceManager {
     static ID: number;
     static _autoWatchSubscriber: Function | null;
-    private _noreact;
-    noreact(cb: Function): void;
     private static ins;
-    static isService(proxy: ServiceProxy): any;
-    static injectIgnore(t: any, key: any, config?: IgnoreConfig_t): void;
-    static injectLate(t: any, key: any, sid: string): void;
-    static injectWatch(t: any, key: any, keys: string[]): void;
-    static injectAutoWatch(t: any, cb: Function): void;
+    noreact: boolean;
     getServiceFlag(t: Target_t): number;
     private gServiceList;
     GLOBAL_SERVICE$: BehaviorSubject<RxServiceSubject[]>;
@@ -36,4 +30,6 @@ export declare class ServiceManager {
     getService(t: Target_t<any>): ServiceCache;
     subscribeServiceStream(stream: Observable<any[]>, next: () => any): import("rxjs").Subscription;
 }
+export declare function NoReactBegin(target?: any): boolean;
+export declare function NoReactEnd(target?: any): boolean;
 //# sourceMappingURL=ServiceManager.d.ts.map

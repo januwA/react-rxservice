@@ -1,10 +1,11 @@
 import { SERVICE_CONFIG } from "./const";
 import { ServiceManager } from "./ServiceManager";
+import { injectAutoWatch, injectIgnore, injectLate, injectWatch, } from "./utils";
 export function Late(sid) {
-    return (target, key, des) => ServiceManager.injectLate(target, key, sid);
+    return (target, key, des) => injectLate(target, key, sid);
 }
 export function Ignore(config) {
-    return (target, key, des) => ServiceManager.injectIgnore(target, key, config);
+    return (target, key, des) => injectIgnore(target, key, config);
 }
 export function Injectable(config) {
     const m = new ServiceManager();
@@ -24,25 +25,12 @@ export function Injectable(config) {
     };
 }
 export function Watch(keys) {
-    return (target, key, des) => ServiceManager.injectWatch(target, key, keys);
+    return (target, key, des) => injectWatch(target, key, keys);
 }
 export function AutoWatch() {
     return (target, key, des) => {
         if (typeof (des === null || des === void 0 ? void 0 : des.value) === "function") {
-            ServiceManager.injectAutoWatch(target, des.value);
-        }
-    };
-}
-export function noreact(cb) {
-    if (cb && typeof cb === "function") {
-        new ServiceManager().noreact(cb);
-    }
-    return (target, key, des) => {
-        if (typeof (des === null || des === void 0 ? void 0 : des.value) === "function") {
-            const cb = des.value;
-            des.value = function () {
-                new ServiceManager().noreact(() => cb.apply(this, arguments));
-            };
+            injectAutoWatch(target, des.value);
         }
     };
 }

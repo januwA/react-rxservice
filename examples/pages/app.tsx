@@ -1,15 +1,42 @@
 import { memo } from "react";
 import { Link } from "react-router-dom";
-import { RxService, useService } from "../../src";
+import { Injectable, RxService, useService, NoReactBegin, NoReactEnd } from "../../src";
 import { AppService } from "../service";
 
+@Injectable({ global: false })
+class Asd {
+  i = 0;
+
+  update1() {
+    NoReactBegin();
+    this.i++;
+    NoReactEnd();
+
+    if (this.i > 4) {
+      throw 'error';
+    }
+  }
+
+  update2() {
+    this.i++;
+  }
+}
+
 export default memo(() => {
-  const [as] = useService(AppService);
+  const [as, asd] = useService(AppService, Asd);
   return (
     <RxService
-      builder={() => {
+      services={[Asd]}
+      builder={(count) => {
         return (
           <div>
+
+            <div>
+              <p>{asd.i}</p>
+            </div>
+
+            <button onClick={asd.update1}>update1</button>
+            <button onClick={asd.update2}>update2</button>
             <p>
               State:
               <button className="add-btn" onClick={as.add}>
