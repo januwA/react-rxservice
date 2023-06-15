@@ -255,11 +255,13 @@ export class ServiceManager {
     const updateSub = change$
       .pipe(debounceTime(DEBOUNCE_TIME))
       .subscribe(() => {
-        // 如果未初始化钩子，将取消这个订阅
-        if (service.proxy.OnUpdate) {
-          service.proxy.OnUpdate();
-        } else {
-          updateSub.unsubscribe();
+        if (service.proxy) {
+          // 如果未初始化钩子，将取消这个订阅
+          if (service.proxy.OnUpdate) {
+            service.proxy.OnUpdate();
+          } else {
+            updateSub.unsubscribe();
+          }
         }
       });
 

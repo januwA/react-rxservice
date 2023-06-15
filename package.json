@@ -1,6 +1,6 @@
 {
   "name": "ajanuw-react-rxservice",
-  "version": "1.6.1",
+  "version": "1.7.0",
   "description": "react service is a react state manager",
   "private": false,
   "main": "./dist/umd/react-rxservice.js",
